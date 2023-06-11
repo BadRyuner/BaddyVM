@@ -1,0 +1,28 @@
+﻿using Reloaded.Memory.Buffers.Internal.Testing;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BaddyVM.VM.Utils;
+internal static class GeneralUtils
+{
+	internal static byte unsignedbyte = 0b0001_0000;
+
+	internal static VMTypes MathWith(VMTypes f, VMTypes t) => f > t ? f : t; // float > unsigned > signed && longer > shorter
+	internal static bool IsUnsigned(this VMTypes t) => ((byte)t & unsignedbyte) == unsignedbyte;
+
+	private static byte[] getLoadCodeHeaderCache;
+
+	internal static byte[] GetLoadCodeHeader()
+	{
+		if (getLoadCodeHeaderCache != null) 
+			return getLoadCodeHeaderCache;
+		using(Reloaded.Assembler.Assembler asm = new())
+		{
+			getLoadCodeHeaderCache = asm.Assemble("use64\nmov rax, qword [CodeStart]\nret\nCodeStart: dq 0");
+		}
+		return getLoadCodeHeaderCache;
+	}
+}
