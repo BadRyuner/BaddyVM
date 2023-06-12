@@ -3,6 +3,7 @@ using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Memory;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using BaddyVM.VM.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,7 @@ internal ref struct LocalHeapMap
 		foreach(var l in md.CilMethodBody.LocalVariables)
 		{
 			offsets.Add(l, start);
-			start += l.VariableType.ElementType == ElementType.ValueType ? (ushort)l.VariableType.GetImpliedMemoryLayout(false).Size : (ushort)8;
+			start += l.VariableType.IsStruct() ? (ushort)l.VariableType.GetImpliedMemoryLayout(false).Size : (ushort)8;
 		}
 		maxsize = start;
 	}

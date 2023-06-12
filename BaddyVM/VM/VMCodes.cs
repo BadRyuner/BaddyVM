@@ -47,6 +47,8 @@ internal enum VMCodes : byte
 	GetVirtFunc,
 
 	CallAddress,
+	SafeCall, // just for structs, im stupid for naming
+	CallInterface,
 	Jmp, // inimplemented
 
 	SwapStack,

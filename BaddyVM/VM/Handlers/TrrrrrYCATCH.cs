@@ -23,19 +23,19 @@ internal class TrrrrrYCATCH
 
 		var jmp = new CilInstruction(CilOpCodes.Nop);
 		var finstart = new CilInstruction(CilOpCodes.Nop);
-		var finend = new CilInstruction(CilOpCodes.Endfinally);
+		var finend = new CilInstruction(CilOpCodes.Nop);
 		var trystart = new CilInstruction(CilOpCodes.Nop);
-		var tryend = new CilInstruction(CilOpCodes.Leave, jmp.CreateLabel());
 		var handler = new CilExceptionHandler() { 
 			HandlerType = CilExceptionHandlerType.Finally,
 			TryStart = trystart.CreateLabel(),
-			TryEnd = tryend.CreateLabel(),
+			TryEnd = finstart.CreateLabel(),
 			HandlerStart = finstart.CreateLabel(),
 			HandlerEnd = finend.CreateLabel()
 		};
 
 		i.DecodeCode(2).CodePtr().Sum().Save(finallybegin);
 		i.LoadNumber(0).Save(ok);
+		i.LoadNumber(0).Save(next);
 
 		i.Add(trystart);
 		i.CodePtr();
@@ -43,19 +43,18 @@ internal class TrrrrrYCATCH
 		i.Call(ctx.Router);
 		i.Save(next);
 		i.LoadNumber(1).Save(ok);
-		i.Add(tryend);
-
+		i.Add(CilOpCodes.Leave_S, jmp.CreateLabel());
 		i.Add(finstart);
 		i.Load(finallybegin);
 		i.Arg1();
 		i.Call(ctx.Router);
 		i.Add(CilOpCodes.Pop);
+		i.Add(CilOpCodes.Endfinally);
 		i.Add(finend);
 
 		i.Add(jmp);
 		i.Load(ok).LoadNumber(1).Compare().IfTrue(() => i.Load(next).OverrideCodePos());
 		b.ExceptionHandlers.Add(handler);
-		i.CalculateOffsets();
 		i.RegisterHandler(ctx, VMCodes.FinTry);
 	}
 

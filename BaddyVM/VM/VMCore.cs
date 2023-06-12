@@ -5,6 +5,7 @@ using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
+using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Utils;
 using Echo.ControlFlow.Blocks;
 using Echo.ControlFlow.Construction.Symbolic;
@@ -203,36 +204,45 @@ internal class VMCore
 				case CilCode.Ldarg_2:
 				case CilCode.Ldarg_3:
 				case CilCode.Ldarg_S:
-				case CilCode.Ldarg: w.LoadStatic(map.Get(current.GetParameter(md.Parameters))); break;
+				case CilCode.Ldarg: w.LoadLocal(map.Get(current.GetParameter(md.Parameters))); break;
 
 				case CilCode.Ldarga:
-				case CilCode.Ldarga_S: w.LoadStaticRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
+				case CilCode.Ldarga_S: w.LoadLocalRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
 
 				case CilCode.Starg_S:
-				case CilCode.Starg: w.StoreStatic(map.Get(current.GetParameter(md.Parameters))); break;
+				case CilCode.Starg:
+					{
+						var param = current.GetParameter(md.Parameters);
+						w.StoreLocal(map.Get(param), param.ParameterType.IsStruct(), (ushort)param.ParameterType.GetImpliedMemoryLayout(false).Size); break;
+					}
 
 				case CilCode.Ldloc:
 				case CilCode.Ldloc_S:
 				case CilCode.Ldloc_0:
 				case CilCode.Ldloc_1:
 				case CilCode.Ldloc_2:
-				case CilCode.Ldloc_3: w.LoadStatic(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
+				case CilCode.Ldloc_3: w.LoadLocal(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
 
 				case CilCode.Ldloca:
-				case CilCode.Ldloca_S: w.LoadStaticRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
+				case CilCode.Ldloca_S: w.LoadLocalRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
 
 				case CilCode.Stloc_0:
 				case CilCode.Stloc_1:
 				case CilCode.Stloc_2:
 				case CilCode.Stloc_3:
 				case CilCode.Stloc_S:
-				case CilCode.Stloc: w.StoreStatic(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
+				case CilCode.Stloc:
+					{
+						var local = current.GetLocalVariable(md.CilMethodBody.LocalVariables);
+						w.StoreLocal(map.Get(local), local.VariableType.IsStruct(), (ushort)local.VariableType.GetImpliedMemoryLayout(false).Size); 
+						break;
+					}
 				#endregion
 				#region fields
 				case CilCode.Ldfld:
 					{
 						var op = ((IFieldDescriptor)current.Operand).Resolve();
-						var offset = TypeOffsetCalc3000.Get(op.DeclaringType, op);
+						var offset = context.GetOffset(op.DeclaringType, op);
 						var size = op.Signature.FieldType.GetImpliedMemoryLayout(false).Size;
 						w.LoadField(offset, size); 
 						break;
@@ -240,14 +250,14 @@ internal class VMCore
 				case CilCode.Ldflda:
 					{
 						var op = ((IFieldDescriptor)current.Operand).Resolve();
-						var offset = TypeOffsetCalc3000.Get(op.DeclaringType, op);
+						var offset = context.GetOffset(op.DeclaringType, op);
 						w.LoadFieldRef(offset);
 						break;
 					}
 				case CilCode.Stfld:
 					{
 						var op = ((IFieldDescriptor)current.Operand).Resolve();
-						var offset = TypeOffsetCalc3000.Get(op.DeclaringType, op);
+						var offset = context.GetOffset(op.DeclaringType, op);
 						var size = op.Signature.FieldType.GetImpliedMemoryLayout(false).Size;
 						w.SetField(offset, size);
 						break;
@@ -264,9 +274,23 @@ internal class VMCore
 
 				case CilCode.Calli: w.Calli((byte)((IMethodDescriptor)current.Operand).Signature.GetTotalParameterCount(),
 					((IMethodDescriptor)current.Operand).Signature.ReturnsValue); break;
-				case CilCode.Call: w.Call(context.Transform((MetadataMember)current.Operand),
-					(byte)((IMethodDescriptor)current.Operand).Signature.GetTotalParameterCount(),
-					((IMethodDescriptor)current.Operand).Signature.ReturnsValue); break;
+				case CilCode.Call:
+					{
+						var method = (IMethodDescriptor)current.Operand;
+						var isgeneric = current.Operand is SerializedMemberReference smr;
+						if (!isgeneric) smr = null;
+						else smr = (SerializedMemberReference)current.Operand; // meh, csharp
+
+						var sig = isgeneric ? (MethodSignature)smr.Signature : method.Signature;
+						var idx = context.Transform((MetadataMember)current.Operand);
+						var pcount = (byte)sig.GetTotalParameterCount();
+						var rets = method.Signature.ReturnsValue;
+						if (!method.Signature.ReturnType.IsStruct())
+							w.Call(idx, pcount, rets);
+						else
+							w.SafeCall(idx);
+						break;
+					}
 
 				case CilCode.Callvirt: // interfaces is unsupported, idk how to implement them
 					{
@@ -274,7 +298,17 @@ internal class VMCore
 						if (func.IsVirtual == false) // why clr, why you do this for non-virt methods???
 							goto case CilCode.Call;
 
-						w.CallVirt(VirtualDispatcher.GetOffset(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
+						if (func.DeclaringType.IsInterface)
+						{
+							if (list[i-1].OpCode == CilOpCodes.Constrained)
+							{
+								w.Code(VMCodes.Pop);
+							}
+							else
+								w.CallInterface(context.TransformCallInterface(func));
+						}
+						else
+							w.CallVirt(VirtualDispatcher.GetOffset(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
 						break;
 					}
 

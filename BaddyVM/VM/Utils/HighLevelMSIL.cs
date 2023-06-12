@@ -30,7 +30,7 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
-	internal static CilInstructionCollection Call(this CilInstructionCollection i, MethodDefinition target)
+	internal static CilInstructionCollection Call(this CilInstructionCollection i, IMethodDescriptor target)
 	{
 		i.Add(CilOpCodes.Call, target);
 		return i;
@@ -50,6 +50,22 @@ internal static class HighLevelMSIL
 			CalliSigsCache.Add((argscount, ret), sig);
 		}
 		i.Add(CilOpCodes.Calli, sig);
+		return i;
+	}
+
+	internal static CilInstructionCollection Calli(this CilInstructionCollection i, VMContext ctx, MethodSignature sig)
+	{
+		var callisig = new MethodSignature(sig.Attributes, sig.ReturnType, sig.ParameterTypes.ToArray());
+		if (callisig.HasThis)
+		{
+			callisig.HasThis = false;
+			callisig.ParameterTypes.Insert(0, ctx.PTR);
+		}
+		if (callisig.ReturnType is GenericInstanceTypeSignature gits)
+		{
+			callisig.ReturnType = gits.Fix(ctx);
+		}
+		i.Add(CilOpCodes.Calli, new StandAloneSignature(callisig));
 		return i;
 	}
 
@@ -91,6 +107,12 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection LoadRef(this CilInstructionCollection i, CilLocalVariable p)
+	{
+		i.Add(CilOpCodes.Ldloca_S, p);
+		return i;
+	}
+
 	internal static CilInstructionCollection LoadNumber(this CilInstructionCollection i, int number)
 	{
 		i.Add(CilInstruction.CreateLdcI4(number));
@@ -100,6 +122,13 @@ internal static class HighLevelMSIL
 	internal static CilInstructionCollection NewLocal(this CilInstructionCollection i, VMContext ctx, out CilLocalVariable var)
 	{
 		var = new CilLocalVariable(ctx.PTR);
+		i.Owner.LocalVariables.Add(var);
+		return i;
+	}
+
+	internal static CilInstructionCollection NewLocal(this CilInstructionCollection i, TypeSignature t, out CilLocalVariable var)
+	{
+		var = new CilLocalVariable(t);
 		i.Owner.LocalVariables.Add(var);
 		return i;
 	}
@@ -144,6 +173,12 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection Save(this CilInstructionCollection i, FieldDefinition var)
+	{
+		i.Add(CilOpCodes.Stsfld, var);
+		return i;
+	}
+
 	internal static CilInstructionCollection SaveToLocalStorage(this CilInstructionCollection i, VMContext ctx, CilLocalVariable buffer)
 	{
 		i.Add(CilOpCodes.Ldarg_1);
@@ -151,6 +186,13 @@ internal static class HighLevelMSIL
 		i.Sum();
 		i.Load(buffer);
 		i.Add(CilOpCodes.Stind_I);
+		return i;
+	}
+
+	internal static CilInstructionCollection SaveAndPushAdr(this CilInstructionCollection i, CilLocalVariable var)
+	{
+		i.Add(CilOpCodes.Stloc_S, var);
+		i.Add(CilOpCodes.Ldloca_S, var);
 		return i;
 	}
 
@@ -602,6 +644,12 @@ internal static class HighLevelMSIL
 	internal static CilInstructionCollection Arg1(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Ldarg_1);
+		return i;
+	}
+
+	internal static CilInstructionCollection Arg0(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Ldarg_0);
 		return i;
 	}
 }

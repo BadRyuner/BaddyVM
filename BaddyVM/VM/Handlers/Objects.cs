@@ -1,5 +1,8 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
+using AsmResolver.DotNet.Memory;
+using AsmResolver.DotNet.Signatures;
+using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 
@@ -9,6 +12,7 @@ internal class Objects
 	internal static void Handle(VMContext ctx)
 	{
 		CallByAddress(ctx);
+		SafeCall(ctx);
 		AllocString(ctx);
 		GetVirtFunc(ctx);
 	}
@@ -96,6 +100,73 @@ internal class Objects
 
 		i.Add(end);
 		i.RegisterHandler(ctx, VMCodes.CallAddress);
+	}
+
+	private static void SafeCall(VMContext ctx)
+	{
+		if (ctx.SafeCallTargets.Count == 0)
+			return;
+
+		var i = ctx.AllocManagedMethod("SafeCall").CilMethodBody.Instructions.NewLocal(ctx, out var buf);
+		i.NewLocal(ctx, out var adr).PopMem(ctx, buf).Save(adr);
+		i.NewLocal(ctx, VMTypes.U1, out var type).DecodeCode(1).Save(type);
+		var maxargs = ctx.SafeCallTargets.Max(m => m.Signature.GetTotalParameterCount());
+		var locals = new CilLocalVariable[maxargs];
+		for (int x = 0; x < maxargs; x++)
+			i.NewLocal(ctx, out locals[x]);
+
+		var dict = new Dictionary<TypeSignature, CilLocalVariable>();
+		var end = new CilInstruction(CilOpCodes.Nop);
+		var endl = end.CreateLabel();
+
+		i.NewLocal(ctx, out var saveretval);
+
+		for(int x = 0; x < ctx.SafeCallTargets.Count; x++)
+		{
+			i.Load(type).LoadNumber(x).Compare().IfTrue(() =>
+			{
+				var target = ctx.SafeCallTargets[x];
+				var args = target.Signature.GetTotalParameterCount();
+				for (int z = 0; z < args; z++)
+					i.PopMem(ctx, buf).Save(locals[z]);
+				for (int z = args - 1; z >= 0; z--)
+					i.Load(locals[z]);
+
+				var retval = target.Signature.ReturnType;
+				if (retval is GenericInstanceTypeSignature gits)
+				{
+					retval = gits.Fix(ctx);
+				}
+
+				//if (!dict.TryGetValue(retval, out var loc))
+				//{
+				//	i.NewLocal(retval, out loc);
+				//	dict.Add(retval, loc);
+				//}
+				/*
+				if (retval.GetImpliedMemoryLayout(false).Size <= 8)
+				{
+					i.Load(adr).Calli(ctx, target.Signature).Save(adr).PushMem(ctx, adr, buf);
+					i.Br(endl);
+				}
+				else
+				{
+					i.Load(adr).Calli(ctx, target.Signature).Save(loc);
+					var size = retval.GetImpliedMemoryLayout(false).Size;
+					i.LoadRef(loc).LoadNumber((int)size).Call(ctx.Allocator).Save(adr).PushMem(ctx, adr, buf);
+					i.Br(endl);
+				} */
+
+				//i.Load(adr).Calli(ctx, target.Signature).Save(saveretval);
+				i.Load(adr).Calli(ctx, ((MethodSignature)target.Signature).GetTotalParameterCount(), true).Save(saveretval);
+				var size = retval.GetImpliedMemoryLayout(false).Size;
+				i.Load(saveretval).LoadNumber((int)size).Call(ctx.Allocator).Save(adr).PushMem(ctx, adr, buf);
+				i.Br(endl);
+			});
+		}
+
+		i.Add(end);
+		i.RegisterHandler(ctx, VMCodes.SafeCall);
 	}
 
 	private static void AllocString(VMContext ctx) // todo: add string crypt

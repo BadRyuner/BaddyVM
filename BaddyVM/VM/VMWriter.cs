@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Xml;
 
 namespace BaddyVM.VM;
 internal ref struct VMWriter
@@ -142,6 +143,12 @@ internal ref struct VMWriter
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
+	internal void SafeCall(ushort idx)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.SafeCall).Byte(ctx.GetSafeCallId((ushort)(idx/8)));
+		//ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
+	}
+
 	internal void Calli(byte argscount, bool ret)
 	{
 		buffer.Code(ctx, VMCodes.CallAddress).Byte(argscount);
@@ -156,6 +163,11 @@ internal ref struct VMWriter
 		if (!ret)
 			Code(VMCodes.Pop);
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
+	}
+
+	internal void CallInterface(ushort idx)
+	{
+		buffer.Code(ctx, VMCodes.CallInterface).Ushort(idx);
 	}
 
 	internal void LoadVMTable(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
@@ -217,14 +229,21 @@ internal ref struct VMWriter
 	internal void Leave(int dest) => buffer.Code(ctx, VMCodes.Leave).LabelOffset(dest);
 
 	// TODO: add support for structs (replace with cpblk)
-	internal void StoreStatic(ushort offset) => buffer.Code(ctx, VMCodes.Store).Ushort(offset);
+	internal void StoreLocal(ushort offset, bool isvaluetype, ushort size)
+	{
+		buffer.Code(ctx, VMCodes.Store).Ushort(offset);
+		buffer.Byte(isvaluetype ? (byte)1 : (byte)0);
+		if (isvaluetype)
+			buffer.Ushort(size);
+	}
 	// TODO: add support for structs (copy)
-	internal void LoadStatic(ushort offset) => buffer.Code(ctx, VMCodes.Load).Ushort(offset);
-	internal void LoadStaticRef(ushort offset) => buffer.Code(ctx, VMCodes.LoadRef).Ushort(offset);
+	internal void LoadLocal(ushort offset) => buffer.Code(ctx, VMCodes.Load).Ushort(offset);
+	internal void LoadLocalRef(ushort offset) => buffer.Code(ctx, VMCodes.LoadRef).Ushort(offset);
 
 	internal void SetField(uint offset, uint size)
 	{
 		buffer.SwapStack(ctx).Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add).SwapStack(ctx);
+		//buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
 		switch (size)
 		{
 			case 1: buffer.Code(ctx, VMCodes.SetI1); break;

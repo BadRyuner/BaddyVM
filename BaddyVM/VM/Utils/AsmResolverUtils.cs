@@ -122,6 +122,38 @@ internal static class AsmResolverUtils
 		}
 	}
 
+	internal static bool IsStruct(this TypeSignature sig)
+	{
+		if (sig.ElementType == ElementType.Var) return false;
+
+		var resolved = sig.Resolve();
+        if (resolved.BaseType.IsTypeOf("System", "ValueType"))
+		{
+			switch(sig.ElementType)
+			{
+				case ElementType.Void:
+				case ElementType.Boolean:
+				case ElementType.Char:
+				case ElementType.I1:
+				case ElementType.U1:
+				case ElementType.I2:
+				case ElementType.U2:
+				case ElementType.I4:
+				case ElementType.U4:
+				case ElementType.I8:
+				case ElementType.U8:
+				case ElementType.U:
+				case ElementType.I:
+				case ElementType.Ptr:
+				case ElementType.FnPtr:
+					return false;
+				default:
+					return true;
+			}
+		}
+		return false;
+	}
+
 	internal static void Virtualize(this VMContext ctx, CilMethodBody body, byte[] vmcode, LocalHeapMap map)
 	{
 		var native = AllocData(ctx, body.Owner.Name);
@@ -143,6 +175,14 @@ internal static class AsmResolverUtils
 		i.Load(data).LoadNumber(ctx.layout.LocalStackHeap).Sum().Load(stack).Set8(); // data[stackoffset] = stack
 
 		int counter = ctx.layout.VMHeaderEnd;
+		if (!body.Owner.IsStatic)
+		{
+			i.Load(data).LoadNumber(counter).Sum();
+			i.Add(CilOpCodes.Ldarg_0);
+			i.Set8();
+			counter += 8;
+		}
+
 		foreach(var arg in body.Owner.Parameters) // TODO: add support for structs
 		{
 			//if (arg.ParameterType is ByReferenceTypeSignature)
