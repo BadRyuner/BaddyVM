@@ -146,6 +146,8 @@ internal static class AsmResolverUtils
 				case ElementType.I:
 				case ElementType.Ptr:
 				case ElementType.FnPtr:
+				case ElementType.SzArray:
+				case ElementType.Array:
 					return false;
 				default:
 					return true;
@@ -165,7 +167,7 @@ internal static class AsmResolverUtils
 		//body.InitializeLocals = false;
 		var i = body.Instructions.NewLocal(ctx, out var stack).NewLocal(ctx, out var data);
 
-		var stacksize = body.MaxStack * 8 + 40; // 40 - overhead for stack safety >_<
+		var stacksize = body.MaxStack * 8 + 80; // 80 - overhead for stack safety >_<
 		i.LoadNumber(stacksize).Stackalloc().Save(stack); // stack = new[stacksize]
 
 		//var datasize = ctx.layout.VMHeaderEnd + (body.LocalVariables.Count + body.Owner.Parameters.Count) * 8 + 8;

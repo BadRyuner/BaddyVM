@@ -1,4 +1,5 @@
-﻿using BaddyVM.VM.Utils;
+﻿using AsmResolver.PE.DotNet.Cil;
+using BaddyVM.VM.Utils;
 using System;
 
 namespace BaddyVM.VM.Handlers;
@@ -21,7 +22,46 @@ internal class _Utils
 		Dup(ctx);
 		Eat(ctx);
 		Poop(ctx);
+		Initblk(ctx);
+		Pushback(ctx);
 	}
+
+	private static void Pushback(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("PushBack").CilMethodBody.Instructions
+		.NewLocal(ctx, out var offset).NewLocal(ctx, out var offsetCopy)
+		.NewLocal(ctx, out var target)
+		.NewLocal(ctx, out var pseudostack)
+		.NewLocal(ctx, out var buffer);
+		var exit = new CilInstruction(CilOpCodes.Nop);
+		i.DecodeCode(2).Dup().Save(offset).Save(offsetCopy)
+		.PopMem(ctx, buffer).Save(target)
+		.Load(offset).Stackalloc().Save(pseudostack)
+		.While(() =>
+		{
+			i.Load(offset).LoadNumber(0).Compare().IfTrue(() => i.Br(exit.CreateLabel()));
+			i.Load(pseudostack).Load(offset).Sum().PopMem(ctx, buffer).Set8();
+			i.Load(offset).LoadNumber(8).Sub().Save(offset);
+		});
+		i.Add(exit);
+		i.PushMem(ctx, target, buffer);
+		exit = new CilInstruction(CilOpCodes.Nop);
+		i.While(() =>
+		 {
+			 i.Load(offset).Load(offsetCopy).Compare().IfTrue(() => i.Br(exit.CreateLabel()));
+			 i.Load(pseudostack).Load(offset).Sum().DerefI().Save(target).PushMem(ctx, target, buffer);
+			 i.Load(offset).LoadNumber(8).Sum().Save(offset);
+		 });
+		i.Add(exit);
+		i.RegisterHandler(ctx, VMCodes.PushBack);
+	}
+
+
+	private static void Initblk(VMContext ctx) => ctx.AllocManagedMethod("Initblk").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf).NewLocal(ctx, out var num).NewLocal(ctx, out var val)
+		.PopMem(ctx, buf).Save(num).PopMem(ctx, buf).Save(val).PopMem(ctx, buf)
+		.Load(val).Load(num).InitBlk()
+		.RegisterHandler(ctx, VMCodes.Initblk);
 
 	private static void Eat(VMContext ctx) => ctx.AllocManagedMethod("Eat").CilMethodBody.Instructions
 		.NewLocal(ctx, out var buf)

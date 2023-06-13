@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33723.286
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaddyVM", "BaddyVM\BaddyVM.csproj", "{E26CD187-A2B4-4EA1-899F-DC57DCC682A6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaddyVM", "BaddyVM\BaddyVM.csproj", "{E26CD187-A2B4-4EA1-899F-DC57DCC682A6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crackme", "Crackme\Crackme.csproj", "{9667D0E3-59BA-4AC7-9303-490B4C574A0D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Crackme", "Crackme\Crackme.csproj", "{9667D0E3-59BA-4AC7-9303-490B4C574A0D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Echo", "Echo", "{3F966467-E324-4243-9846-8C1A69ECFDA1}"
 EndProject

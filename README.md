@@ -3,7 +3,7 @@ Another poorly implemented virtual machine for C#.
 Good for crackme obfuscation to show how good you are.
 
 # What opcodes are implemented?
-[Click me](https://github.com/BadRyuner/BaddyVM/blob/master/BaddyVM/VM/VMCore.cs#L69)
+[Click me](https://github.com/BadRyuner/BaddyVM/blob/master/BaddyVM/VM/VMCore.cs#L110)
 
 # How well does it work?
 Can add two times two and coolly call a virtual method that no one will know about it. (Using Washi theory) (It won't work with interfaces, coreclr will fall)

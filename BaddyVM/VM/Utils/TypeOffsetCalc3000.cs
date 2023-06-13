@@ -1,6 +1,7 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Signatures.Types;
+using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,7 @@ internal static class TypeOffsetCalc3000
 
 		var resolved = type.Resolve();
 
-        if (resolved.Module == ctx.core.module)
+        if (resolved.Module == ctx.core.module && resolved.GenericParameters.Count == 0)
         {
             UpTypes(resolved, ctx.core.module.CorLibTypeFactory);
         }

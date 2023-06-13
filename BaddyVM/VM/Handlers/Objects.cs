@@ -15,6 +15,7 @@ internal class Objects
 		SafeCall(ctx);
 		AllocString(ctx);
 		GetVirtFunc(ctx);
+		CallInterface(ctx);
 	}
 
 	private static void CallByAddress(VMContext ctx) // unsafe 
@@ -212,5 +213,57 @@ internal class Objects
 		.Save(res).PushMem(ctx, res, buf);
 		
 		i.RegisterHandler(ctx, VMCodes.GetVirtFunc);
+	}
+
+	private static void CallInterface(VMContext ctx)
+	{
+		if (ctx.InterfaceCalls.Count == 0)
+			return;
+
+		var i = ctx.AllocManagedMethod("CallInterface").CilMethodBody.Instructions
+			.NewLocal(ctx, out var isConstrained).NewLocal(ctx, out var refcontainer)
+			.NewLocal(ctx, out var buf).NewLocal(ctx, out var target)
+			.NewLocal(ctx, out var idx);
+
+		i.DecodeCode(2).Save(idx);
+
+		i.DecodeCode(1).LoadNumber(1).Compare().IfTrue(() =>
+		{
+			i.PopMem(ctx, buf).Save(isConstrained).LoadRef(isConstrained).Save(refcontainer);
+		});
+
+		var maxargs = ctx.InterfaceCalls.Max(m => m.Signature.GetTotalParameterCount());
+
+		var args = new CilLocalVariable[maxargs];
+		for(int x = 0; x < maxargs; x++)
+			i.NewLocal(ctx, out args[x]);
+
+		for(int z = 0; z < maxargs; z++)
+		{
+			var interf = ctx.InterfaceCalls[z];
+			i.LoadNumber(z).Load(idx).Compare().IfTrue(() =>
+			{
+				var reqargs = interf.Signature.GetTotalParameterCount();
+				for(int x = 0; x < reqargs; x++)
+				{
+					i.PopMem(ctx, buf).Save(args[x]);
+					if (x == reqargs - 1)
+						i.Load(args[x]).Save(target);
+				}
+				for (int x = 0; x < reqargs; x++)
+					i.Load(args[x]);
+
+				//i.Load(isConstrained).LoadNumber(1).Cgt().IfTrue(() => i.Load(refcontainer).Save(target));
+				i.Load(target);
+				i.Add(CilOpCodes.Ldvirtftn, ctx.core.module.DefaultImporter.ImportMethod(interf));
+				//i.Add(CilOpCodes.Ldftn, ctx.core.module.DefaultImporter.ImportMethod(interf));
+				bool ret = interf.Signature.ReturnsValue;
+				i.Calli(ctx, reqargs, ret);
+				if (ret)
+					i.Save(target).PushMem(ctx, target, buf);
+			});
+		}
+
+		i.RegisterHandler(ctx, VMCodes.CallInterface);
 	}
 }

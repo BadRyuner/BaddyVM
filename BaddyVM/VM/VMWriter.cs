@@ -165,9 +165,9 @@ internal ref struct VMWriter
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
-	internal void CallInterface(ushort idx)
+	internal void CallInterface(ushort idx, bool isconstrained)
 	{
-		buffer.Code(ctx, VMCodes.CallInterface).Ushort(idx);
+		buffer.Code(ctx, VMCodes.CallInterface).Ushort(idx).Byte(isconstrained ? (byte)1 : (byte)0);
 	}
 
 	internal void LoadVMTable(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
@@ -181,13 +181,7 @@ internal ref struct VMWriter
 			fixed(byte* b = utf)
 				for (int i = 0; i < utf.Length; i++)
 					buffer.Byte(b[i]);
-			/*
-			fixed (char* c = str)
-				for(int i = 0; i < str.Length; i++)
-					buffer.Short((short)c[i]);
-			*/
 		}
-		//buffer.Short(0);
 	}
 
 	// TODO: add support for structs (unbox them and copy)
@@ -196,7 +190,6 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(type);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject)); 
 		buffer.Code(ctx, VMCodes.CallAddress).Byte(1);
-		//buffer.Code(ctx, VMCodes.Dup); 
 		buffer.Code(ctx, VMCodes.Eat); 
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(constructor); 
 		buffer.Code(ctx, VMCodes.CallAddress).Byte((byte)(args ^ 0b1000_0000));
@@ -237,7 +230,13 @@ internal ref struct VMWriter
 			buffer.Ushort(size);
 	}
 	// TODO: add support for structs (copy)
-	internal void LoadLocal(ushort offset) => buffer.Code(ctx, VMCodes.Load).Ushort(offset);
+	internal void LoadLocal(ushort offset, bool isStruct)
+	{
+		if (isStruct) 
+			LoadLocalRef(offset);
+		else
+			buffer.Code(ctx, VMCodes.Load).Ushort(offset);
+	}
 	internal void LoadLocalRef(ushort offset) => buffer.Code(ctx, VMCodes.LoadRef).Ushort(offset);
 
 	internal void SetField(uint offset, uint size)
@@ -272,6 +271,16 @@ internal ref struct VMWriter
 			default:
 				throw new NotImplementedException();
 		}
+	}
+
+	internal void Initobj(uint size)
+	{
+		buffer.Code(ctx, VMCodes.Push4).Int(0).Code(ctx, VMCodes.Push4).Int((int)size).Code(ctx, VMCodes.Initblk);
+	}
+
+	internal void PushBack(ushort offset)
+	{
+		buffer.Code(ctx, VMCodes.PushBack).Ushort((ushort)(offset * (ushort)8));
 	}
 
 	internal void Ret() => buffer.Code(ctx, VMCodes.Ret);

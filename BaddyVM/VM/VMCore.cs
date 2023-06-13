@@ -204,7 +204,14 @@ internal class VMCore
 				case CilCode.Ldarg_2:
 				case CilCode.Ldarg_3:
 				case CilCode.Ldarg_S:
-				case CilCode.Ldarg: w.LoadLocal(map.Get(current.GetParameter(md.Parameters))); break;
+				case CilCode.Ldarg:
+					{
+						var p = current.GetParameter(md.Parameters);
+						var isStruct = p.ParameterType.IsStruct();
+						if (p.Index == -1)
+							isStruct = false;
+						w.LoadLocal(map.Get(p), isStruct); break;
+					}
 
 				case CilCode.Ldarga:
 				case CilCode.Ldarga_S: w.LoadLocalRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
@@ -221,7 +228,11 @@ internal class VMCore
 				case CilCode.Ldloc_0:
 				case CilCode.Ldloc_1:
 				case CilCode.Ldloc_2:
-				case CilCode.Ldloc_3: w.LoadLocal(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
+				case CilCode.Ldloc_3:
+					{
+						var l = current.GetLocalVariable(md.CilMethodBody.LocalVariables);
+						w.LoadLocal(map.Get(l), l.VariableType.IsStruct()); break;
+					}
 
 				case CilCode.Ldloca:
 				case CilCode.Ldloca_S: w.LoadLocalRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
@@ -292,7 +303,7 @@ internal class VMCore
 						break;
 					}
 
-				case CilCode.Callvirt: // interfaces is unsupported, idk how to implement them
+				case CilCode.Callvirt:
 					{
 						var func = ((IMethodDefOrRef)current.Operand).Resolve();
 						if (func.IsVirtual == false) // why clr, why you do this for non-virt methods???
@@ -302,10 +313,23 @@ internal class VMCore
 						{
 							if (list[i-1].OpCode == CilOpCodes.Constrained)
 							{
-								w.Code(VMCodes.Pop);
+								//w.CallInterface(context.TransformCallInterface(func), true);
+								//w.Code(VMCodes.Pop);
+								var comparer = new SignatureComparer();
+								MetadataMember resolvedFunc; 
+								var type = ((ITypeDefOrRef)list[i - 1].Operand);
+								if (type is TypeDefinition td)
+									resolvedFunc = td.Methods.First(m => m.Name == func.Name && comparer.Equals(m.Signature, func.Signature));
+								else
+								{
+									//var resolvedType = type.Resolve();
+									//resolvedFunc = (MetadataMember)module.DefaultImporter.ImportMethod(resolvedType.Methods.First(m => m.Name == func.Name && comparer.Equals(m.Signature, func.Signature)));
+									resolvedFunc = type.CreateMemberReference(func.Name, func.Signature);
+								}
+								w.Call(context.Transform(resolvedFunc), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
 							}
 							else
-								w.CallInterface(context.TransformCallInterface(func));
+								w.CallInterface(context.TransformCallInterface(func), false);
 						}
 						else
 							w.CallVirt(VirtualDispatcher.GetOffset(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
@@ -314,7 +338,22 @@ internal class VMCore
 
 				case CilCode.Newobj:
 					{
-						if (current.Operand is SerializedMemberReference smr)
+						if (((IMethodDefOrRef)current.Operand).DeclaringType.Resolve().IsByRefLike)
+						{
+							var ctor = (IMethodDefOrRef)current.Operand;
+							var parent = (MetadataMember)ctor.DeclaringType;
+							var args = (byte)ctor.Signature.GetTotalParameterCount();
+							if (list[i+1].IsStloc() && list[i+1].GetLocalVariable(md.CilMethodBody.LocalVariables).VariableType.Resolve().IsByRefLike)
+							{
+								i++;
+								w.LoadLocalRef(map.Get(list[i].GetLocalVariable(md.CilMethodBody.LocalVariables)));
+								w.PushBack((ushort)(args-1));
+								w.Call(context.Transform((MetadataMember)ctor), args, false);
+								break;
+							}
+							throw new NotSupportedException("newobj byreflike type");
+						}
+						else if (current.Operand is SerializedMemberReference smr)
 						{
 							var ctor = smr;
 							var parent = (MetadataMember)ctor.DeclaringType;
@@ -324,7 +363,9 @@ internal class VMCore
 						{
 							var ctor = (IMethodDefOrRef)current.Operand;
 							var parent = (MetadataMember)ctor.DeclaringType;
-							w.NewObj(context.Transform(parent), context.Transform((MetadataMember)ctor), (byte)((MethodSignature)ctor.Signature).GetTotalParameterCount());
+							w.NewObj(context.Transform(parent),
+								context.Transform((MetadataMember)ctor),
+								(byte)((MethodSignature)ctor.Signature).GetTotalParameterCount());
 						}
 						break;
 					}
@@ -424,7 +465,29 @@ internal class VMCore
 
 				case CilCode.Ret: w.Ret(); break;
 
-				case CilCode.Constrained: break; // idk
+				case CilCode.Constrained:
+					{
+						var type = current.Operand as ITypeDefOrRef;
+						var isStruct = type.ToTypeSignature().IsStruct();
+						if (list[i+1].OpCode.Code == CilCode.Callvirt && isStruct)
+						{
+							//var method = (IMethodDefOrRef)list[i+1].Operand;
+							//w.LoadVMTable(context.TransformLdtoken((MetadataMember)type));
+						}
+						break;
+					}
+
+				case CilCode.Initobj:
+					{
+						var type = current.Operand as ITypeDefOrRef;
+						if (!type.ToTypeSignature().IsStruct())
+							throw new NotImplementedException("case Initobj -> type != struct");
+
+						w.Initobj(type.GetImpliedMemoryLayout(false).Size);
+						break;
+					}
+
+				case CilCode.Initblk: w.Code(VMCodes.Initblk); break;
 
 				case CilCode.Break:
 				case CilCode.Jmp:
@@ -459,9 +522,7 @@ internal class VMCore
 				case CilCode.Unaligned:
 				case CilCode.Volatile:
 				case CilCode.Tailcall:
-				case CilCode.Initobj:
 				case CilCode.Cpblk:
-				case CilCode.Initblk:
 				case CilCode.Rethrow:
 				case CilCode.Refanytype:
 				case CilCode.Readonly:

@@ -35,7 +35,7 @@ internal class VMContext
 	internal IMethodDescriptor MemCpy;
 	private FieldDefinition MemBuffer;
 	private FieldDefinition MemPos;
-	private int maxmem = 1024;
+	private int maxmem = 1024 * 8;
 
 	internal TypeSignature PTR;
 
@@ -75,7 +75,7 @@ internal class VMContext
 		Allocator = this.AllocManagedMethod("Allocator");
 		var alloc = Allocator.CilMethodBody.Instructions.NewLocal(this, out var result);
 		//alloc.Arg1().LoadNumber(8).Compare().IfTrue(() => alloc.Arg0().Ret());
-		alloc.Arg1().LoadNumber(maxmem).Cgt().IfTrue(() => alloc.LoadNumber(0).Save(MemPos)) // if arg1 > maxmem then mempos = 0
+		alloc.Arg1().Load(MemPos).Sum().LoadNumber(maxmem).Cgt().IfTrue(() => alloc.LoadNumber(0).Save(MemPos)) // if arg1 + mempos > maxmem then mempos = 0
 		.Load(MemBuffer).Load(MemPos).Sum().Save(result) // result = (membuf + mempos)
 		.Arg0().Load(result).Arg1().Arg1().Call(MemCpy) // MemBuf(arg0, result, arg1, arg1)
 		.Arg1().Load(MemPos).Sum().Save(MemPos) // mempos += sizetoalloc
@@ -137,7 +137,10 @@ internal class VMContext
 				if (!resolved.IsPublic)
 					ignorechecks.Add(resolved.Module.Name);
 
-				i.Add(CilOpCodes.Ldftn, core.module.DefaultImporter.ImportMethod(md)); // +_+
+				//if (md.IsImportedInModule(core.module))
+				//	i.Add(CilOpCodes.Ldftn, md); // +_+
+				//else
+					i.Add(CilOpCodes.Ldftn, core.module.DefaultImporter.ImportMethod(md));
 			}
 			else if (target is ITypeDefOrRef td)
 			{

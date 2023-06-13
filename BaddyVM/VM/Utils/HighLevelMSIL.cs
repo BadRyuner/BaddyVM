@@ -82,6 +82,12 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection InitBlk(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Initblk);
+		return i;
+	}
+
 	internal static CilInstructionCollection Load(this CilInstructionCollection i, CilLocalVariable var)
 	{
 		i.Add(CilOpCodes.Ldloc_S, var);
@@ -165,6 +171,12 @@ internal static class HighLevelMSIL
 		if (!i.Owner.Owner.Signature.ReturnsValue)
 			i.Add(CilOpCodes.Pop);
 		i.Add(CilOpCodes.Ret);
+	}
+
+	internal static CilInstructionCollection Dup(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Dup);
+		return i;
 	}
 
 	internal static CilInstructionCollection Save(this CilInstructionCollection i, CilLocalVariable var)

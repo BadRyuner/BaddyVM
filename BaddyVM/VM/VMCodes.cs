@@ -57,6 +57,8 @@ internal enum VMCodes : byte
 
 	FinTry, Leave, NoRet,
 
+	Initblk, PushBack,
+
 	Ret,
 
 	Intrinsic, // TODO, Add intrinsics like Console.WriteLine -> asm call to sys

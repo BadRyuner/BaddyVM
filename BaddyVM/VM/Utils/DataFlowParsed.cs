@@ -248,7 +248,7 @@ internal class DataFlowParsed
 				return VMTypes.PTR;
 
 			case CilCode.Ldfld:
-				return ((FieldDefinition)instr.Operand).Signature.FieldType.IsValueType ? VMTypes.PTR : VMTypes.PTR;
+				return VMTypes.PTR;
 
 			case CilCode.Ldsflda:
 			case CilCode.Ldflda:
