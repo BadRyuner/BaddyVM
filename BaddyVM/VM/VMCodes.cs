@@ -36,7 +36,9 @@ internal enum VMCodes : byte
 
 	NewArr, PrepareArr,
 
-	NewObj,
+	NewObjUnsafe, // unsafe because can be easy RE
+
+	CreateDelegate,
 
 	Eat, Poop,
 

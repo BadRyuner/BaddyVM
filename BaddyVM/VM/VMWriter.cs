@@ -198,6 +198,50 @@ internal ref struct VMWriter
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, args);
 	}
 
+	internal void NewObjUnsafe(ushort idx)
+	{
+		buffer.Code(ctx, VMCodes.NewObjUnsafe).Ushort(idx);
+		/*
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetObjStub(size));
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject));
+		buffer.Code(ctx, VMCodes.CallAddress).Byte(1);
+		buffer.Code(ctx, VMCodes.Eat);
+		buffer.Code(ctx, VMCodes.Poop);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
+		buffer.Code(ctx, VMCodes.SetI);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(constructor);
+		buffer.Code(ctx, VMCodes.CallAddress).Byte((byte)(args ^ 0b1000_0000));
+		buffer.Code(ctx, VMCodes.Pop);
+		buffer.Code(ctx, VMCodes.Poop);
+		ctx.MaxArgs = Math.Max(ctx.MaxArgs, args);
+		*/
+	}
+
+	// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+	internal void CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(ushort typeIdx)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
+		buffer.Code(ctx, VMCodes.CallAddress).Byte(2);
+		buffer.Code(ctx, VMCodes.Eat);
+		buffer.Code(ctx, VMCodes.Poop);
+		buffer.Code(ctx, VMCodes.Push4).Int(8);
+		buffer.Code(ctx, VMCodes.Add);
+		buffer.Code(ctx, VMCodes.PushBack).Ushort(8);
+		buffer.Code(ctx, VMCodes.SetI);
+
+		buffer.Code(ctx, VMCodes.Poop);
+	}
+
+	internal void ReplaceTypeHandle(ushort idx)
+	{
+		buffer.Code(ctx, VMCodes.Eat);
+		buffer.Code(ctx, VMCodes.Poop);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.SetI);
+		buffer.Code(ctx, VMCodes.Poop);
+	}
+
 	internal void BeginTry(byte type)
 	{
 		if (type != 0) throw new NotImplementedException();

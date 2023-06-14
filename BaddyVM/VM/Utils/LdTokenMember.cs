@@ -4,16 +4,19 @@ using AsmResolver.PE.DotNet.Metadata.Tables;
 namespace BaddyVM.VM.Utils;
 internal class LdTokenMember : MetadataMember
 {
-	public LdTokenMember(MetadataToken token) : base(token)
+	internal MetadataMember target;
+
+	public LdTokenMember(MetadataMember mem) : base(mem.MetadataToken)
 	{
+		target = mem;
 	}
 
 	public override bool Equals(object obj)
 	{
 		if (obj is LdTokenMember ld)
-			return ld.MetadataToken == this.MetadataToken;
+			return ld.MetadataToken == target.MetadataToken;
 		return false;
 	}
 
-	public override int GetHashCode() => this.MetadataToken.GetHashCode();
+	public override int GetHashCode() => target.MetadataToken.GetHashCode();
 }

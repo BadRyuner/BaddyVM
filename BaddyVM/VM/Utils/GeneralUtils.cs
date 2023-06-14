@@ -1,4 +1,6 @@
-﻿using Reloaded.Memory.Buffers.Internal.Testing;
+﻿using AsmResolver;
+using AsmResolver.DotNet;
+using Reloaded.Memory.Buffers.Internal.Testing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +15,7 @@ internal static class GeneralUtils
 	internal static VMTypes MathWith(VMTypes f, VMTypes t) => f > t ? f : t; // float > unsigned > signed && longer > shorter
 	internal static bool IsUnsigned(this VMTypes t) => ((byte)t & unsignedbyte) == unsignedbyte;
 
+	/*
 	private static byte[] getLoadCodeHeaderCache;
 
 	internal static byte[] GetLoadCodeHeader()
@@ -24,5 +27,16 @@ internal static class GeneralUtils
 			getLoadCodeHeaderCache = asm.Assemble("use64\nmov rax, qword [CodeStart]\nret\nCodeStart: dq 0");
 		}
 		return getLoadCodeHeaderCache;
+	}
+	*/
+
+	private static Utf8String DelegateName = "Delegate";
+	private static Utf8String SystemNM = "System";
+
+	internal static bool IsDelegate(this ITypeDefOrRef type)
+	{
+		if (type.IsTypeOfUtf8(SystemNM, DelegateName) || type.Resolve().BaseType?.IsDelegate() == true)
+			return true;
+		return false;
 	}
 }

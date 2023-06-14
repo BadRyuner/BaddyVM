@@ -1,6 +1,7 @@
 ﻿using AsmResolver;
 using AsmResolver.DotNet;
 using AsmResolver.DotNet.Cloning;
+using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
@@ -40,6 +41,9 @@ internal class VMContext
 	internal TypeSignature PTR;
 
 	internal int MaxArgs = 0;
+	//internal HashSet<int> ObjSizes = new();
+	//private Dictionary<uint, ushort> ObjStubs = new(4);
+	internal Dictionary<IMethodDefOrRef, ushort> NewObjUnsafeData = new(4);
 
 	internal MetadataMember CreateObject;
 
@@ -111,10 +115,10 @@ internal class VMContext
 		var i = init.CilMethodBody.Instructions;
 		i.Clear();
 		i.Add(CilInstruction.CreateLdcI4(VMTableContent.Count * 8));
-		i.Add(CilOpCodes.Call, core.module.DefaultImporter.ImportMethod(typeof(System.Runtime.InteropServices.Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
+		i.Add(CilOpCodes.Call, core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
 		i.Add(CilOpCodes.Stsfld, VMTable);
 		i.Add(CilInstruction.CreateLdcI4(maxmem));
-		i.Add(CilOpCodes.Call, core.module.DefaultImporter.ImportMethod(typeof(System.Runtime.InteropServices.Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
+		i.Add(CilOpCodes.Call, core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
 		i.Add(CilOpCodes.Stsfld, MemBuffer);
 		i.Add(CilInstruction.CreateLdcI4(0));
 		i.Add(CilOpCodes.Stsfld, MemPos);
@@ -137,9 +141,9 @@ internal class VMContext
 				if (!resolved.IsPublic)
 					ignorechecks.Add(resolved.Module.Name);
 
-				//if (md.IsImportedInModule(core.module))
-				//	i.Add(CilOpCodes.Ldftn, md); // +_+
-				//else
+				if (md.IsImportedInModule(core.module))
+					i.Add(CilOpCodes.Ldftn, md); // +_+
+				else
 					i.Add(CilOpCodes.Ldftn, core.module.DefaultImporter.ImportMethod(md));
 			}
 			else if (target is ITypeDefOrRef td)
@@ -151,8 +155,8 @@ internal class VMContext
 				i.Add(CilOpCodes.Ldtoken, td);
 				i.Add(CilOpCodes.Call, oftype);
 			}
-			else if (target is LdTokenMember)
-				i.Add(CilOpCodes.Ldtoken, target.MetadataToken);
+			else if (target is LdTokenMember ld)
+				i.Add(CilOpCodes.Ldtoken, ld.target);
 			else
 				throw new NotSupportedException();
 			i.Set8();
@@ -199,14 +203,14 @@ internal class VMContext
 
 	internal ushort TransformLdtoken(MetadataMember member)
 	{
-		var ld = new LdTokenMember(member.MetadataToken);
+		var ld = new LdTokenMember(member);
 		var result = VMTableContent.IndexOf(ld);
 		if (result == -1)
 		{
 			result = VMTableContent.Count;
 			VMTableContent.Add(ld);
 		}
-		return (ushort)(result * 8); // idea: maybe add random +- 1 ? Hmm
+		return (ushort)(result * 8);
 	}
 
 	internal ushort TransformCallInterface(IMethodDescriptor member)
@@ -231,4 +235,39 @@ internal class VMContext
 		}
 		return (byte)ret;
 	}
+
+	internal ushort GetNewObjUnsafeIdx(IMethodDefOrRef method)
+	{
+		if (NewObjUnsafeData.TryGetValue(method, out var res)) 
+			return res;
+		res = (ushort)NewObjUnsafeData.Count;
+		NewObjUnsafeData.Add(method, res);
+		return res;
+	}
+
+	private ushort _DFP = ushort.MaxValue;
+	internal ushort GetDelegateForPointer()
+	{
+		if (_DFP != ushort.MaxValue)
+			return _DFP;
+		return _DFP = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
+			typeof(Marshal).GetMethod("GetDelegateForFunctionPointer",
+				System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public, 
+				new[] { typeof(IntPtr), typeof(Type) })));
+	}
+
+	/*
+	internal ushort GetObjStub(uint size)
+	{
+		if (ObjStubs.TryGetValue(size, out var res))
+			return res;
+
+		var obj = new TypeDefinition(null, $"Stub{size}", TypeAttributes.Class, core.module.CorLibTypeFactory.Object.ToTypeDefOrRef());
+		obj.IsNotPublic = true;
+		obj.ClassLayout = new ClassLayout(0, size);
+		core.module.TopLevelTypes.Add(obj);
+		res = TransformLdtoken(obj);
+		ObjStubs.Add(size, res);
+		return res;
+	}*/
 }

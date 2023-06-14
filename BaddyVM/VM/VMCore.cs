@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Xml.Linq;
 
 namespace BaddyVM.VM;
 internal class VMCore
@@ -30,6 +31,8 @@ internal class VMCore
 		module = assembly.ManifestModule;
 		context = new VMContext(this);
 		context.Init();
+		//foreach(var t in module.GetAllTypes()) 
+		//	t.IsSequentialLayout = true;
 	}
 
 	internal void Virtualize(IEnumerable<MethodDefinition> targets)
@@ -353,15 +356,20 @@ internal class VMCore
 							}
 							throw new NotSupportedException("newobj byreflike type");
 						}
-						else if (current.Operand is SerializedMemberReference smr)
-						{
-							var ctor = smr;
-							var parent = (MetadataMember)ctor.DeclaringType;
-							w.NewObj(context.Transform(parent), context.Transform(ctor), (byte)((MethodSignature)ctor.Signature).GetTotalParameterCount());
-						}
+						//else if (current.Operand is SerializedMemberReference smr)
+						//{
+						//	var ctor = smr;
+						//	var parent = (MetadataMember)ctor.DeclaringType;
+						//	w.NewObj(context.Transform(parent), context.Transform(ctor), (byte)((MethodSignature)ctor.Signature).GetTotalParameterCount());
+						//}
 						else
 						{
 							var ctor = (IMethodDefOrRef)current.Operand;
+							if (ctor.DeclaringType.IsDelegate())
+							{
+								w.CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(context.Transform((MetadataMember)ctor.DeclaringType));
+								break;
+							}
 							var parent = (MetadataMember)ctor.DeclaringType;
 							w.NewObj(context.Transform(parent),
 								context.Transform((MetadataMember)ctor),

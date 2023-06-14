@@ -36,6 +36,12 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection NewObj(this CilInstructionCollection i, IMethodDescriptor target)
+	{
+		i.Add(CilOpCodes.Newobj, target);
+		return i;
+	}
+
 	private static Dictionary<(int, bool), StandAloneSignature> CalliSigsCache = new(32);
 
 	internal static CilInstructionCollection Calli(this CilInstructionCollection i, VMContext ctx, int argscount, bool ret)

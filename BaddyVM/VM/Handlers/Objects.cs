@@ -16,6 +16,7 @@ internal class Objects
 		AllocString(ctx);
 		GetVirtFunc(ctx);
 		CallInterface(ctx);
+		//NewObjUnsafe(ctx);
 	}
 
 	private static void CallByAddress(VMContext ctx) // unsafe 
@@ -215,7 +216,7 @@ internal class Objects
 		i.RegisterHandler(ctx, VMCodes.GetVirtFunc);
 	}
 
-	private static void CallInterface(VMContext ctx)
+	private static void CallInterface(VMContext ctx) // broken
 	{
 		if (ctx.InterfaceCalls.Count == 0)
 			return;
@@ -266,4 +267,49 @@ internal class Objects
 
 		i.RegisterHandler(ctx, VMCodes.CallInterface);
 	}
+
+	/* // broken :(
+	private static void NewObjUnsafe(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("NewObjUnsafe").CilMethodBody.Instructions
+			.NewLocal(ctx, out var buf)
+			.NewLocal(ctx, out var type);
+
+		i.DecodeCode(2).Save(type);
+
+		var maxargs = ctx.NewObjUnsafeData.Keys.Max(m => m.Signature.GetTotalParameterCount() - 1);
+
+		var locals = new CilLocalVariable[maxargs];
+		for (int x = 0; x < locals.Length; x++)
+			i.NewLocal(ctx, out locals[x]);
+
+		var exit = new CilInstruction(CilOpCodes.Nop);
+		var exitl = exit.CreateLabel();
+
+		foreach (var x in ctx.NewObjUnsafeData)
+		{
+			i.LoadNumber(x.Value).Load(type).Compare().IfTrue(() =>
+			{
+				var args = x.Key.Signature.GetTotalParameterCount() - 1;
+				for(int z = 0; z < args; z++)
+					i.PopMem(ctx, buf).Save(locals[z]);
+				//for(int z = args-1; z >= 0; z--)
+				for (int z = 0; z < args; z++)
+				{
+					if (x.Key.Signature.ParameterTypes[z].IsValueType)
+						i.LoadRef(locals[z]).DerefI();
+					else
+					{
+						i.LoadRef(locals[z]);
+						i.Add(CilOpCodes.Ldind_Ref);
+					}
+				}
+				i.NewObj(x.Key);
+				//i.Add(CilOpCodes.Pop);
+				i.Save(type).PushMem(ctx, type, buf).Br(exitl);
+			});
+		}
+		i.Add(exit);
+		i.RegisterHandler(ctx, VMCodes.NewObjUnsafe);
+	} */
 }
