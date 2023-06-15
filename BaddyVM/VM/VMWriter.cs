@@ -218,19 +218,38 @@ internal ref struct VMWriter
 	}
 
 	// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-	internal void CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(ushort typeIdx)
+	internal void CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(ushort typeIdx, bool isStatic)
 	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateCtor());
+		buffer.Code(ctx, VMCodes.CreateDelegate);
+		/*
+		if (!isStatic)
+		{
+			buffer.Code(ctx, VMCodes.Dup);
+		}
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
 		buffer.Code(ctx, VMCodes.CallAddress).Byte(2);
 		buffer.Code(ctx, VMCodes.Eat);
-		buffer.Code(ctx, VMCodes.Poop);
-		buffer.Code(ctx, VMCodes.Push4).Int(8);
-		buffer.Code(ctx, VMCodes.Add);
-		buffer.Code(ctx, VMCodes.PushBack).Ushort(8);
-		buffer.Code(ctx, VMCodes.SetI);
 
+		if (isStatic)
+		{
+			buffer.Code(ctx, VMCodes.Pop); // pop "this"
+		}
+
+		if (!isStatic)
+		{
+			buffer.Code(ctx, VMCodes.Poop);
+			buffer.Code(ctx, VMCodes.PushBack).Ushort(8 * 2);
+			//buffer.Code(ctx, VMCodes.PushBack).Ushort(8);
+			buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateCtor());
+			buffer.Code(ctx, VMCodes.CallAddress).Byte(3);
+			buffer.Code(ctx, VMCodes.Pop);
+		}
 		buffer.Code(ctx, VMCodes.Poop);
+		*/
 	}
 
 	internal void ReplaceTypeHandle(ushort idx)

@@ -5,17 +5,14 @@ using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
-using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Utils;
 using Echo.ControlFlow.Blocks;
 using Echo.ControlFlow.Construction.Symbolic;
 using Echo.ControlFlow.Serialization.Blocks;
 using Echo.Platforms.AsmResolver;
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Xml.Linq;
 
 namespace BaddyVM.VM;
 internal class VMCore
@@ -38,7 +35,7 @@ internal class VMCore
 	internal void Virtualize(IEnumerable<MethodDefinition> targets)
 	{
 		var methods = targets.Where(m => m.DeclaringType != context.VMType).ToArray(); // m.DeclaringType != context.VMType
-		StringBuilder buffer = new(1024);
+		StringBuilder buffer = new(1024*4);
 		Reloaded.Assembler.Assembler assembler = new();
 		foreach(var method in methods) 
 		{
@@ -147,8 +144,8 @@ internal class VMCore
 				#region number
 				case CilCode.Ldc_I8:
 					{
-						var res = (double)current.Operand;
-						w.LoadNumber(Unsafe.As<double, long>(ref res));
+						var res = (long)current.Operand;
+						w.LoadNumber(res);
 						break;
 					}
 				case CilCode.Ldc_R4:
@@ -312,6 +309,9 @@ internal class VMCore
 						if (func.IsVirtual == false) // why clr, why you do this for non-virt methods???
 							goto case CilCode.Call;
 
+						if (func.DeclaringType.IsDelegate()) // say no to pain
+							goto case CilCode.Call;
+
 						if (func.DeclaringType.IsInterface)
 						{
 							if (list[i-1].OpCode == CilOpCodes.Constrained)
@@ -367,7 +367,8 @@ internal class VMCore
 							var ctor = (IMethodDefOrRef)current.Operand;
 							if (ctor.DeclaringType.IsDelegate())
 							{
-								w.CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(context.Transform((MetadataMember)ctor.DeclaringType));
+								w.CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(context.Transform((MetadataMember)ctor.DeclaringType),
+									((IMethodDefOrRef)list[i-1].Operand).Signature.HasThis == false);
 								break;
 							}
 							var parent = (MetadataMember)ctor.DeclaringType;

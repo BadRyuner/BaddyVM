@@ -1,6 +1,5 @@
 ﻿using AsmResolver;
 using AsmResolver.DotNet;
-using Reloaded.Memory.Buffers.Internal.Testing;
 using System;
 using System.Collections.Generic;
 using System.Linq;

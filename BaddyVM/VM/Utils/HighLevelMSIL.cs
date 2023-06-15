@@ -529,10 +529,15 @@ internal static class HighLevelMSIL
 			// out: result
 	}
 
+	internal static CilInstructionCollection PeekMem(this CilInstructionCollection i, VMContext ctx, CilLocalVariable to)
+	{
+		return i.LoadLocalStackHeap(ctx).Deref8().Save(to); // out = *(mem->LocalStack)
+	}
+
 	internal static CilInstructionCollection PeekMem(this CilInstructionCollection i, VMContext ctx, CilLocalVariable at, CilLocalVariable to)
 	{
 		return i.LoadLocalStackHeap(ctx)
-			.Load(at).Sub().Deref8().Save(to); // to = (mem->LocalStack - at)
+			.Load(at).Sub().Deref8().Save(to); // to = *(mem->LocalStack - at)
 	}
 
 	internal static CilInstructionCollection OverrideMem(this CilInstructionCollection i, VMContext ctx, CilLocalVariable at, CilLocalVariable it)

@@ -125,8 +125,11 @@ internal static class AsmResolverUtils
 	internal static bool IsStruct(this TypeSignature sig)
 	{
 		if (sig.ElementType == ElementType.Var) return false;
+		if (sig.ElementType == ElementType.SzArray) return false;
 
 		var resolved = sig.Resolve();
+        if (resolved.BaseType == null) return false;
+
         if (resolved.BaseType.IsTypeOf("System", "ValueType"))
 		{
 			switch(sig.ElementType)

@@ -8,7 +8,6 @@ using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Handlers;
 using BaddyVM.VM.Utils;
-using Reloaded.Memory.Sources;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,6 +112,8 @@ internal class VMContext
 
 		var init = VMType.GetOrCreateStaticConstructor();
 		var i = init.CilMethodBody.Instructions;
+		var NoNoNoCLR = new CilLocalVariable(PTR);
+		init.CilMethodBody.LocalVariables.Add(NoNoNoCLR);
 		i.Clear();
 		i.Add(CilInstruction.CreateLdcI4(VMTableContent.Count * 8));
 		i.Add(CilOpCodes.Call, core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
@@ -134,6 +135,22 @@ internal class VMContext
 					ignorechecks.Add(fd.Module.Name);
 
 				i.Add(CilOpCodes.Ldsflda, fd);
+			}
+			else if (target is LdFieldOffset ldf)
+			{
+				i.Add(CilOpCodes.Ldtoken, ldf.f);
+				i.Add(CilOpCodes.Stloc, NoNoNoCLR);
+				i.Add(CilOpCodes.Ldloc, NoNoNoCLR);
+				i.Add(CilOpCodes.Ldc_I4_S, 12);
+				i.Add(CilOpCodes.Add);
+				i.Add(CilOpCodes.Ldind_I4);
+				i.Add(CilOpCodes.Ldc_I4, 0x7FFFFFF);
+				i.Add(CilOpCodes.And);
+				if (!ldf.f.DeclaringType.IsValueType)
+				{
+					i.Add(CilOpCodes.Ldc_I4_8);
+					i.Add(CilOpCodes.Add);
+				}
 			}
 			else if (target is IMethodDescriptor md)
 			{
@@ -201,6 +218,18 @@ internal class VMContext
 		return (ushort)(result * 8); // idea: maybe add random +- 1 ? Hmm
 	}
 
+	internal ushort TransformFieldOffset(IFieldDescriptor member)
+	{
+		var fd = new LdFieldOffset(member);
+		var result = VMTableContent.IndexOf(fd);
+		if (result == -1)
+		{
+			result = VMTableContent.Count;
+			VMTableContent.Add(fd);
+		}
+		return (ushort)(result * 8);
+	}
+
 	internal ushort TransformLdtoken(MetadataMember member)
 	{
 		var ld = new LdTokenMember(member);
@@ -254,6 +283,17 @@ internal class VMContext
 			typeof(Marshal).GetMethod("GetDelegateForFunctionPointer",
 				System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public, 
 				new[] { typeof(IntPtr), typeof(Type) })));
+	}
+
+	private ushort _DC = ushort.MaxValue;
+	internal ushort GetDelegateCtor()
+	{
+		if (_DC != ushort.MaxValue)
+			return _DC;
+		return _DC = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
+			typeof(MulticastDelegate).GetMethod("CtorClosed",
+				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+				new[] { typeof(object), typeof(IntPtr) })));
 	}
 
 	/*

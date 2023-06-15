@@ -1,6 +1,7 @@
 ﻿using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using System;
+using System.Runtime.InteropServices;
 
 namespace BaddyVM.VM.Handlers;
 internal class _Utils
@@ -24,6 +25,25 @@ internal class _Utils
 		Poop(ctx);
 		Initblk(ctx);
 		Pushback(ctx);
+		CreateDelegate(ctx);
+	}
+
+	private static void CreateDelegate(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("CreatedDelegate").CilMethodBody.Instructions.NewLocal(ctx, out var buf);
+		i.NewLocal(ctx, out var DelForPtr).NewLocal(ctx, out var DelCtor)
+		 .NewLocal(ctx, out var thus).NewLocal(ctx, out var fn).NewLocal(ctx, out var type);
+
+		i.PopMem(ctx, buf).Save(DelCtor)
+		 .PopMem(ctx, buf).Save(DelForPtr)
+		 .PopMem(ctx, buf).Save(type)
+		 .PopMem(ctx, buf).Save(fn)
+		 .PopMem(ctx, buf).Save(thus);
+		var alsoDelegate = DelForPtr;
+		i.Load(fn).Load(type).Load(DelForPtr).Calli(ctx, 2, true).Save(alsoDelegate);
+		i.Load(thus).LoadNumber(0).Compare().LoadNumber(0).Compare().IfTrue(() => i.Load(alsoDelegate).Load(thus).Load(fn).Load(DelCtor).Calli(ctx, 3, false));
+		i.PushMem(ctx, alsoDelegate, buf);
+		i.RegisterHandler(ctx, VMCodes.CreateDelegate);
 	}
 
 	private static void Pushback(VMContext ctx)
@@ -31,8 +51,10 @@ internal class _Utils
 		var i = ctx.AllocManagedMethod("PushBack").CilMethodBody.Instructions
 		.NewLocal(ctx, out var offset).NewLocal(ctx, out var offsetCopy)
 		.NewLocal(ctx, out var target)
-		.NewLocal(ctx, out var pseudostack)
+		.NewLocal(ctx, out var copy)
+		//.NewLocal(ctx, out var pseudostack)
 		.NewLocal(ctx, out var buffer);
+		/*
 		var exit = new CilInstruction(CilOpCodes.Nop);
 		i.DecodeCode(2).Dup().Save(offset).Save(offsetCopy)
 		.PopMem(ctx, buffer).Save(target)
@@ -53,9 +75,29 @@ internal class _Utils
 			 i.Load(offset).LoadNumber(8).Sum().Save(offset);
 		 });
 		i.Add(exit);
+		*/
+
+		// broken again AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+		i.DecodeCode(2).Save(offset);
+		i.PeekMem(ctx, target); // target = stack[0]
+		i.PeekMem(ctx, offset, copy) // copy = stack[offset]
+			.OverrideMem(ctx, offset, target); // xchg stack[offset], target
+		i.Load(copy).Save(target); // target = copy
+
+		var exit = new CilInstruction(CilOpCodes.Nop);
+
+		i.While(() =>
+		{
+			i.Load(offset).LoadNumber(0).Compare().IfTrue(() => i.OverrideMem(ctx, offset, copy).Br(exit.CreateLabel()));
+			i.Load(offset).LoadNumber(8).Sub().Save(offset)
+				.PeekMem(ctx, offset, copy).OverrideMem(ctx, offset, target)
+				.Load(copy).Save(target);
+		});
+
+		i.Add(exit);
 		i.RegisterHandler(ctx, VMCodes.PushBack);
 	}
-
 
 	private static void Initblk(VMContext ctx) => ctx.AllocManagedMethod("Initblk").CilMethodBody.Instructions
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var num).NewLocal(ctx, out var val)

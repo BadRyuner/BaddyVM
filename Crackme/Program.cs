@@ -1,48 +1,109 @@
-﻿using Terminal.Gui;
+﻿using System.Runtime.InteropServices;
+using Terminal.Gui;
 
 namespace Crackme;
 
-public unsafe class Program : Window
+public unsafe class Program
 {
-	TextField field;
-	TextField field1;
-	TextField field2;
-	TextField field3;
-	Button button;
-	long wrongs = 0;
+	static Button Verify;
 
 	public Program()
 	{
-		Title = "CrackMe by BadRyuner";
-		/*
-		var pin = new Label("Enter pin:") { X = Pos.Center() };
 
-		field = new TextField("") { Y = Pos.Bottom(pin) + 1, Width = Dim.Percent(24f) };
-		field1 = new TextField("") { X = Pos.Right(field) + 2, Y = Pos.Bottom(pin) + 1, Width = Dim.Percent(24f) };
-		field2 = new TextField("") { X = Pos.Right(field1) + 2, Y = Pos.Bottom(pin) + 1, Width = Dim.Percent(24f) };
-		field3 = new TextField("") { X = Pos.Right(field2) + 2, Y = Pos.Bottom(pin) + 1, Width = Dim.Percent(24f) };
-		*/
-		//button = new Button("Check") { X = Pos.Center(), Y = Pos.Bottom(field) + 1 };
-		button = new Button("Check");
-		Add(button);
-		//button.Clicked += Test;
-
-		//Add(pin);
-		//Add(field);
-		//Add(field1);
-		//Add(field2);
-		//Add(field3);
 	}
 
-	private void Test()
+	Button b;
+	Button c;
+	Button e;
+	long a;
+	byte h;
+	TextField ff;
+
+	public void Write()
 	{
-		wrongs++;
-		MessageBox.Query("Err", "Wrong Pin! Try again...", "Ok");
+		Console.WriteLine(this.GetType());
+	}
+
+	public static void W()
+	{
+		Console.WriteLine(typeof(Program));
 	}
 
 	private static void Main(string[] args)
 	{
-		Application.Run<Program>();
+		Start();
+	}
+
+	private static void Start()
+	{
+		Application.Init();
+		var window = new Window("Crackme by BadRyuner") { X = Pos.Center(), Y = Pos.Center(), Width = 42, Height = 10 };
+		window.ColorScheme.Normal = new Terminal.Gui.Attribute(Color.White, Color.Black);
+
+		Label p = null;
+		var labels = new Label[8];
+		for (int i = 0; i < 8; i++)
+		{
+			if (p == null)
+				p = new Label("0") { X = 1, Y = 3, TextAlignment = TextAlignment.Centered, Width = 3 };
+			else
+				p = new Label("0") { X = Pos.Right(p) + 2, Y = 3, TextAlignment = TextAlignment.Centered, Width = 3 };
+			p.Border = new Border() { BorderStyle = BorderStyle.Rounded, BorderBrush = Color.White, Background = Color.Black };
+			labels[i] = p;
+			window.Add(p);
+			var iCopy = i;
+			var up = new Button("\u2191") { X = p.X - 1, Y = 1 };
+			up.Border = new Border() { BorderBrush = Color.White, Background = Color.Black };
+			up.Clicked += () =>
+			{
+				var current = labels[iCopy].Text[0] - '0';
+				if (current < 9)
+					labels[iCopy].Text = ((char)(current + 1 + '0')).ToString();
+				else
+					labels[iCopy].Text = "0";
+			};
+			var down = new Button("\u2193") { X = p.X - 1, Y = 5 };
+			down.Border = new Border() { BorderBrush = Color.White, Background = Color.Black };
+			down.Clicked += () =>
+			{
+				var current = labels[iCopy].Text[0] - '0';
+				if (current > 0)
+					labels[iCopy].Text = ((char)(current - 1 + '0')).ToString();
+				else
+					labels[iCopy].Text = "9";
+			};
+			window.Add(up, down);
+		}
+
+		var button = new Button("Open") { X = Pos.Center(), Y = 7 };
+		button.Clicked += () => 
+		{ 
+			bool good = false;
+			long pin = 0;
+			byte* p = (byte*)&pin;
+			p[0] = (byte)(labels[0].Text[0] - '0');
+			p[1] = (byte)(labels[1].Text[0] - '0');
+			if (*(ushort*)p != 0b0000_0011_0000_0110)
+				goto ohno;
+			p[2] = (byte)(labels[2].Text[0] - '0');
+			p[3] = (byte)(labels[3].Text[0] - '0');
+			p[4] = (byte)(labels[4].Text[0] - '0');
+			p[5] = (byte)(labels[5].Text[0] - '0');
+			p[6] = (byte)(labels[6].Text[0] - '0');
+			p[7] = (byte)(labels[7].Text[0] - '0');
+			if (pin == 285881730728710)
+				good = true;
+			ohno:
+			if (good) // 6 3 2 7 2 4 1 0
+				MessageBox.Query("Mission Completed!", "Please write a solution on crackmes.one :)", "Ok", "Nah");
+			else
+				MessageBox.Query("Bad Pin!", "Try Again!", "Meh...");
+			
+		};
+
+		window.Add(button);
+		Application.Top.Add(window);
+		Application.Run();
 		Application.Shutdown();
 	}
 }
