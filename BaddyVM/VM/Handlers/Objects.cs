@@ -177,27 +177,15 @@ internal class Objects
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var length).NewLocal(ctx, out var str)
 		//.NewLocal(ctx, out var ptr)
 		.DecodeCode(4).Save(length)
-		.CodePtr()
+		.LoadNumber(0) // pseudo this for ctor
+		.CodePtr() // ptr
 		.SkipCode(length)
-		.Load(length)
 		.AccessToVMTable(ctx)
-		.LoadNumber(ctx.Transform((MetadataMember)ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("CreateStringForSByteConstructor", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic))))
+		//.LoadNumber(ctx.Transform((MetadataMember)ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("CreateStringForSByteConstructor", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic))))
+		.LoadNumber(ctx.Transform((MetadataMember)ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("Ctor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, new[] { typeof(char*) }))))
 		.Sum().DerefI()
 		.Calli(ctx, 2, true).Save(str);
-		//i.Load(str).LoadNumber(16).Sum().Save(ptr);
 
-		//var exit = new CilInstruction(CilOpCodes.Nop);
-
-		/*
-		i.While(() =>
-		{
-			i.Load(length).LoadNumber(0).Compare().IfTrue(() => i.Br(exit.CreateLabel()));
-			i.Load(ptr).DecodeCode(2).Set2();
-			i.Load(ptr).LoadNumber(2).Sum().Save(ptr);
-			i.Load(length).LoadNumber(1).Sub().Save(length);
-		}); */
-
-		//i.Add(exit);
 		i.PushMem(ctx, str, buf);
 		i.RegisterHandler(ctx, VMCodes.Ldstr);
 	}

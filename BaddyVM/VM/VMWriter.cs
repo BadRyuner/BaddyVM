@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Unicode;
 using System.Xml;
 
 namespace BaddyVM.VM;
@@ -174,6 +175,7 @@ internal ref struct VMWriter
 
 	internal void Ldstr(string str)
 	{
+		/*
 		var utf = Encoding.UTF8.GetBytes(str);
 		buffer.Code(ctx, VMCodes.Ldstr).Int(utf.Length);
 		unsafe
@@ -182,6 +184,16 @@ internal ref struct VMWriter
 				for (int i = 0; i < utf.Length; i++)
 					buffer.Byte(b[i]);
 		}
+		*/
+
+		buffer.Code(ctx, VMCodes.Ldstr).Int(str.Length*2 + 2);
+		unsafe
+		{
+			fixed (char* c = str)
+				for (int i = 0; i < str.Length; i++)
+					buffer.Short((short)c[i]);
+		}
+		buffer.Short(0); // \0
 	}
 
 	// TODO: add support for structs (unbox them and copy)
@@ -224,32 +236,6 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateCtor());
 		buffer.Code(ctx, VMCodes.CreateDelegate);
-		/*
-		if (!isStatic)
-		{
-			buffer.Code(ctx, VMCodes.Dup);
-		}
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
-		buffer.Code(ctx, VMCodes.CallAddress).Byte(2);
-		buffer.Code(ctx, VMCodes.Eat);
-
-		if (isStatic)
-		{
-			buffer.Code(ctx, VMCodes.Pop); // pop "this"
-		}
-
-		if (!isStatic)
-		{
-			buffer.Code(ctx, VMCodes.Poop);
-			buffer.Code(ctx, VMCodes.PushBack).Ushort(8 * 2);
-			//buffer.Code(ctx, VMCodes.PushBack).Ushort(8);
-			buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateCtor());
-			buffer.Code(ctx, VMCodes.CallAddress).Byte(3);
-			buffer.Code(ctx, VMCodes.Pop);
-		}
-		buffer.Code(ctx, VMCodes.Poop);
-		*/
 	}
 
 	internal void ReplaceTypeHandle(ushort idx)
