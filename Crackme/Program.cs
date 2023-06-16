@@ -5,26 +5,6 @@ namespace Crackme;
 
 public unsafe class Program
 {
-	static Button Verify;
-
-	public Program()
-	{
-
-	}
-
-	Button b;
-	Button c;
-	Button e;
-	long a = 88;
-	byte h = 2;
-	public TextField ff;
-
-	public void Write()
-	{
-		Console.WriteLine(a);
-		Console.WriteLine(h);
-	}
-
 	private static void Main(string[] args)
 	{
 		Start();

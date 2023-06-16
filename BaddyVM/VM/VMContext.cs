@@ -152,7 +152,7 @@ internal class VMContext
 					if (!fd.DeclaringType.IsValueType)
 					{
 						i.Add(CilOpCodes.Ldc_I4_8);
-						i.Add(CilOpCodes.And);
+						i.Add(CilOpCodes.Add);
 					}
 				}
 			}
