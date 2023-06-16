@@ -21,13 +21,15 @@ Download latest sources, open Program.cs, change it for yourself and compile it 
 ```csharp
 public unsafe static void Main(string[] args)
 {
-	int* ptr = stackalloc int[64];
-	int* ptr2 = stackalloc int[120];
+	int* ptr = Marshal.AllocHGlobal(64);
+	int* ptr2 = Marshal.AllocHGlobal(120);
 	*(IntPtr*)(ptr2 + 0) = ptr;
 	*(IntPtr*)(ptr2 + 12) = args;
 	*(IntPtr*)(ptr2 + 10) = 1;
 	*(IntPtr*)(ptr2 + 4) = VMRunner.VMTable;
 	VMRunner.a(<Module>.Main(), ptr2);
+	Marshal.FreeHGlobal(ptr);
+	Marshal.FreeHGlobal(ptr2);
 }
 ```
 The VM instructions look like this

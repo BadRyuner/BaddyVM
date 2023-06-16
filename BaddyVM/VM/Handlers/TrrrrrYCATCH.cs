@@ -33,7 +33,7 @@ internal class TrrrrrYCATCH
 			HandlerEnd = finend.CreateLabel()
 		};
 
-		i.DecodeCode(2).CodePtr().Sum().Save(finallybegin);
+		i.DecodeSignedCode(2).CodePtr().Sum().Save(finallybegin);
 		i.LoadNumber(0).Save(ok);
 		i.LoadNumber(0).Save(next);
 
@@ -59,7 +59,7 @@ internal class TrrrrrYCATCH
 	}
 
 	private static void Leave(VMContext ctx) => ctx.AllocManagedMethod("Leave").CilMethodBody.Instructions
-		.NewLocal(ctx, out var what).DecodeCode(2).CodePtr().Sum().Ret()
+		.NewLocal(ctx, out var what).DecodeSignedCode(2).CodePtr().Sum().Ret()
 		.RegisterHandlerNoJmp(ctx, VMCodes.Leave);
 
 	private static void NoRet(VMContext ctx) => ctx.AllocManagedMethod("NoRet").CilMethodBody.Instructions

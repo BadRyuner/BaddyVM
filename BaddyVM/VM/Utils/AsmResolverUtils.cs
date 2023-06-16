@@ -7,6 +7,7 @@ using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Builder;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using Iced.Intel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -170,12 +171,12 @@ internal static class AsmResolverUtils
 		//body.InitializeLocals = false;
 		var i = body.Instructions.NewLocal(ctx, out var stack).NewLocal(ctx, out var data);
 
-		var stacksize = body.MaxStack * 8 + 80; // 80 - overhead for stack safety >_<
-		i.LoadNumber(stacksize).Stackalloc().Save(stack); // stack = new[stacksize]
+		var stacksize = body.MaxStack * 8 + 160; // 160 - overhead for stack safety >_<
+		i.LoadNumber(stacksize).AllocGlobal(ctx).Save(stack); // stack = new[stacksize]
 
 		//var datasize = ctx.layout.VMHeaderEnd + (body.LocalVariables.Count + body.Owner.Parameters.Count) * 8 + 8;
-		var datasize = map.maxsize + 8;
-		i.LoadNumber(datasize).Stackalloc().Save(data); // data = new[datasize]
+		var datasize = map.maxsize + 16;
+		i.LoadNumber(datasize).AllocGlobal(ctx).Save(data); // data = new[datasize]
 
 		i.Load(data).LoadNumber(ctx.layout.LocalStackHeap).Sum().Load(stack).Set8(); // data[stackoffset] = stack
 
@@ -207,7 +208,12 @@ internal static class AsmResolverUtils
 
 		i.Call(native.Owner) 
 		.Load(data)
-		.Call(ctx.GetInvoke()).RetSafe(); // ret Invoker(code, data);
+		.Call(ctx.GetInvoke()); // Invoker(code, data);
+
+		i.Load(stack).FreeGlobal(ctx);
+		i.Load(data).FreeGlobal(ctx);
+
+		i.RetSafe();
 		/*
 		body.Instructions
 			.Call(native.Owner)

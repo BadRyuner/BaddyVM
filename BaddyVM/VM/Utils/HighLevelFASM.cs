@@ -54,13 +54,13 @@ internal static class HighLevelFASM
 
 	internal static StringBuilder LabelOffset(this StringBuilder s, int dest)
 	{
-		s.AppendLine($"ILl_{unnamed}: dw IL_{dest} - ILl_{unnamed} - 2"); unnamed++;
+		s.AppendLine($"ILl_{unnamed}: dw (IL_{dest} - ILl_{unnamed} - 2)"); unnamed++;
 		return s;
 	}
 
 	internal static StringBuilder LabelOffset(this StringBuilder s, string dest)
 	{
-		s.AppendLine($"ILl_{unnamed}: dw {dest} - ILl_{unnamed} - 2"); unnamed++;
+		s.AppendLine($"ILl_{unnamed}: dw ({dest} - ILl_{unnamed} - 2)"); unnamed++;
 		return s;
 	}
 

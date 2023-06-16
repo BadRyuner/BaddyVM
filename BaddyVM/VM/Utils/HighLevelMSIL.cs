@@ -5,6 +5,7 @@ using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using System.ComponentModel.Design;
+using System.Runtime.InteropServices;
 
 namespace BaddyVM.VM.Utils;
 
@@ -322,6 +323,18 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection AllocGlobal(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.Add(CilOpCodes.Call, ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
+		return i;
+	}
+
+	internal static CilInstructionCollection FreeGlobal(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.Add(CilOpCodes.Call, ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("FreeHGlobal")));
+		return i;
+	}
+
 	internal static CilInstructionCollection Sum(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Add);
@@ -472,6 +485,21 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection DecodeSignedCode(this CilInstructionCollection i, int size)
+	{
+		i.Add(CilOpCodes.Ldarg_0);
+		switch (size)
+		{
+			case 1: i.Add(CilOpCodes.Ldind_I1); break;
+			case 2: i.Add(CilOpCodes.Ldind_I2); break;
+			case 4: i.Add(CilOpCodes.Ldind_I4); break;
+			case 8: i.Add(CilOpCodes.Ldind_I8); break;
+			default: throw new NotImplementedException();
+		}
+		i.SkipCode(size);
+		return i;
+	}
+
 	internal static CilInstructionCollection CodePtr(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Ldarg_0);
@@ -573,7 +601,16 @@ internal static class HighLevelMSIL
 	internal static void RegisterHandler(this CilInstructionCollection i, VMContext ctx, VMCodes code)
 	{
 		i.Add(CilOpCodes.Jmp, ctx.Router);
+		//i.Add(CilOpCodes.Ldarg_0);
+		//i.Add(CilOpCodes.Ldarg_1);
+		//i.Add(CilOpCodes.Call, ctx.Router);
+		//i.Add(CilOpCodes.Ret);
 		ctx.Handlers.Add(ctx.EncryptVMCode(code), i.Owner.Owner);
+	}
+
+	internal static void Jmp(this CilInstructionCollection i, MethodDefinition md)
+	{
+		i.Add(CilOpCodes.Jmp, md);
 	}
 
 	internal static void RegisterHandlerNoJmp(this CilInstructionCollection i, VMContext ctx, VMCodes code)

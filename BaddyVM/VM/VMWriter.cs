@@ -175,17 +175,6 @@ internal ref struct VMWriter
 
 	internal void Ldstr(string str)
 	{
-		/*
-		var utf = Encoding.UTF8.GetBytes(str);
-		buffer.Code(ctx, VMCodes.Ldstr).Int(utf.Length);
-		unsafe
-		{
-			fixed(byte* b = utf)
-				for (int i = 0; i < utf.Length; i++)
-					buffer.Byte(b[i]);
-		}
-		*/
-
 		buffer.Code(ctx, VMCodes.Ldstr).Int(str.Length*2 + 2);
 		unsafe
 		{

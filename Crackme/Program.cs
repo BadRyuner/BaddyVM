@@ -1,16 +1,15 @@
-﻿using System.Runtime.InteropServices;
-using Terminal.Gui;
+﻿using Terminal.Gui;
 
 namespace Crackme;
 
-public unsafe class Program
+public class Program
 {
 	private static void Main(string[] args)
 	{
 		Start();
 	}
-
-	private static void Start()
+	
+	public static void Start()
 	{
 		Application.Init();
 		var window = new Window("Crackme by BadRyuner") { X = Pos.Center(), Y = Pos.Center(), Width = 42, Height = 10 };
@@ -32,8 +31,8 @@ public unsafe class Program
 			up.Border = new Border() { BorderBrush = Color.White, Background = Color.Black };
 			up.Clicked += () =>
 			{
-				var current = labels[iCopy].Text[0] - '0';
-				if (current < 9)
+				var current = int.Parse(labels[iCopy].Text.ToString());
+				if (current <= 8)
 					labels[iCopy].Text = ((char)(current + 1 + '0')).ToString();
 				else
 					labels[iCopy].Text = "0";
@@ -42,7 +41,7 @@ public unsafe class Program
 			down.Border = new Border() { BorderBrush = Color.White, Background = Color.Black };
 			down.Clicked += () =>
 			{
-				var current = labels[iCopy].Text[0] - '0';
+				var current = int.Parse(labels[iCopy].Text.ToString());
 				if (current > 0)
 					labels[iCopy].Text = ((char)(current - 1 + '0')).ToString();
 				else
@@ -52,29 +51,28 @@ public unsafe class Program
 		}
 
 		var button = new Button("Open") { X = Pos.Center(), Y = 7 };
-		button.Clicked += () => 
-		{ 
+		button.Clicked += () =>
+		{
 			bool good = false;
-			long pin = 0;
-			byte* p = (byte*)&pin;
-			p[0] = (byte)(labels[0].Text[0] - '0');
-			p[1] = (byte)(labels[1].Text[0] - '0');
-			if (*(ushort*)p != 0b0000_0011_0000_0110)
+			var p1 = long.Parse(labels[0].Text.ToString());
+			var p2 = long.Parse(labels[1].Text.ToString());
+			long pin = p1;
+			pin |= p2 << 8;
+			if (pin != 0b0000_0011_0000_0110)
 				goto ohno;
-			p[2] = (byte)(labels[2].Text[0] - '0');
-			p[3] = (byte)(labels[3].Text[0] - '0');
-			p[4] = (byte)(labels[4].Text[0] - '0');
-			p[5] = (byte)(labels[5].Text[0] - '0');
-			p[6] = (byte)(labels[6].Text[0] - '0');
-			p[7] = (byte)(labels[7].Text[0] - '0');
-			if (pin == 285881730728710)
-				good = true;
-			ohno:
-			if (good) // 6 3 2 7 2 4 1 0
-				MessageBox.Query("Mission Completed!", "Please write a solution on crackmes.one :)", "Ok", "Nah");
+			pin |= long.Parse(labels[2].Text.ToString()) << 16;
+			pin |= long.Parse(labels[3].Text.ToString()) << 24;
+			pin |= long.Parse(labels[4].Text.ToString()) << 32;
+			pin |= long.Parse(labels[5].Text.ToString()) << 40;
+			pin |= long.Parse(labels[6].Text.ToString()) << 48;
+			pin |= long.Parse(labels[7].Text.ToString()) << 56;
+
+			good = pin == 285881730728710;
+		ohno:
+			if (good)
+				MessageBox.Query("Mission Completed!", "Please write a solution on crackmes.one :)");
 			else
-				MessageBox.Query("Bad Pin!", "Try Again!", "Meh...");
-			
+				MessageBox.Query("Bad Pin!", "Try Again! (Press ESC)");
 		};
 
 		window.Add(button);

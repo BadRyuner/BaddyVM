@@ -13,7 +13,7 @@ internal static class Jumps
 
 	internal static void Br(VMContext ctx) => ctx.AllocManagedMethod("Br_Handle").CilMethodBody.Instructions
 		.NewLocal(ctx, VMTypes.I2, out var buf)
-		.DecodeCode(2).Save(buf).SkipCode(buf).RegisterHandler(ctx, VMCodes.Br);
+		.DecodeSignedCode(2).Save(buf).SkipCode(buf).RegisterHandler(ctx, VMCodes.Br);
 
 	internal static void BrTrue(VMContext ctx)
 	{
@@ -22,10 +22,12 @@ internal static class Jumps
 		.NewLocal(ctx, out var buf)
 		.PopMem(ctx, buf);
 		var skip = new CilInstruction(CilOpCodes.Nop);
+
+		i.DecodeSignedCode(2).Save(offset);
 		i.Add(CilOpCodes.Brtrue, skip.CreateLabel());
 		i.Add(CilOpCodes.Jmp, ctx.Router);
 		i.Add(skip);
-		i.DecodeCode(2).Save(offset).SkipCode(offset).RegisterHandler(ctx, VMCodes.Brtrue);
+		i.SkipCode(offset).RegisterHandler(ctx, VMCodes.Brtrue);
 	}
 
 	internal static void BrFalse(VMContext ctx)
@@ -35,9 +37,11 @@ internal static class Jumps
 		.NewLocal(ctx, out var buf)
 		.PopMem(ctx, buf);
 		var skip = new CilInstruction(CilOpCodes.Nop);
+
+		i.DecodeSignedCode(2).Save(offset);
 		i.Add(CilOpCodes.Brfalse, skip.CreateLabel());
 		i.Add(CilOpCodes.Jmp, ctx.Router);
 		i.Add(skip);
-		i.DecodeCode(2).Save(offset).SkipCode(offset).RegisterHandler(ctx, VMCodes.Brfalse);
+		i.SkipCode(offset).RegisterHandler(ctx, VMCodes.Brfalse);
 	}
 }
