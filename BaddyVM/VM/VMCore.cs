@@ -253,24 +253,24 @@ internal class VMCore
 				case CilCode.Ldfld:
 					{
 						var op = ((IFieldDescriptor)current.Operand).Resolve();
-						var offset = context.GetOffset(op.DeclaringType, op);
+						//var offset = context.GetOffset(op.DeclaringType, op);
 						var size = op.Signature.FieldType.GetImpliedMemoryLayout(false).Size;
-						w.LoadField(offset, size); 
+						w.LoadField(context.TransformFieldOffset(op), size); 
 						break;
 					}
 				case CilCode.Ldflda:
 					{
 						var op = ((IFieldDescriptor)current.Operand).Resolve();
-						var offset = context.GetOffset(op.DeclaringType, op);
-						w.LoadFieldRef(offset);
+						//var offset = context.GetOffset(op.DeclaringType, op);
+						w.LoadFieldRef(context.TransformFieldOffset(op));
 						break;
 					}
 				case CilCode.Stfld:
 					{
 						var op = ((IFieldDescriptor)current.Operand).Resolve();
-						var offset = context.GetOffset(op.DeclaringType, op);
+						//var offset = context.GetOffset(op.DeclaringType, op);
 						var size = op.Signature.FieldType.GetImpliedMemoryLayout(false).Size;
-						w.SetField(offset, size);
+						w.SetField(context.TransformFieldOffset(op), size);
 						break;
 					}
 				#endregion

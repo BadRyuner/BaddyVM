@@ -112,7 +112,7 @@ internal class VMContext
 
 		var init = VMType.GetOrCreateStaticConstructor();
 		var i = init.CilMethodBody.Instructions;
-		var NoNoNoCLR = new CilLocalVariable(PTR);
+		var NoNoNoCLR = new CilLocalVariable(core.module.DefaultImporter.ImportTypeSignature(typeof(RuntimeFieldHandle)));
 		init.CilMethodBody.LocalVariables.Add(NoNoNoCLR);
 		i.Clear();
 		i.Add(CilInstruction.CreateLdcI4(VMTableContent.Count * 8));
@@ -123,33 +123,37 @@ internal class VMContext
 		i.Add(CilOpCodes.Stsfld, MemBuffer);
 		i.Add(CilInstruction.CreateLdcI4(0));
 		i.Add(CilOpCodes.Stsfld, MemPos);
+
 		for (int x = 0; x < VMTableContent.Count; x++)
 		{
 			var target = VMTableContent[x];
 			i.Load(VMTable);
 			if (x != 0)
 				i.LoadNumber(x*8).Sum();
-			if (target is FieldDefinition fd && fd.IsStatic)
+			if (target is FieldDefinition fd)
 			{
 				if (!fd.IsPublic)
 					ignorechecks.Add(fd.Module.Name);
 
-				i.Add(CilOpCodes.Ldsflda, fd);
-			}
-			else if (target is LdFieldOffset ldf)
-			{
-				i.Add(CilOpCodes.Ldtoken, ldf.f);
-				i.Add(CilOpCodes.Stloc, NoNoNoCLR);
-				i.Add(CilOpCodes.Ldloc, NoNoNoCLR);
-				i.Add(CilOpCodes.Ldc_I4_S, 12);
-				i.Add(CilOpCodes.Add);
-				i.Add(CilOpCodes.Ldind_I4);
-				i.Add(CilOpCodes.Ldc_I4, 0x7FFFFFF);
-				i.Add(CilOpCodes.And);
-				if (!ldf.f.DeclaringType.IsValueType)
+				if (fd.IsStatic)
+					i.Add(CilOpCodes.Ldsflda, fd);
+				else
 				{
-					i.Add(CilOpCodes.Ldc_I4_8);
+					i.Add(CilOpCodes.Ldtoken, fd);
+					i.Save(NoNoNoCLR);
+					i.LoadRef(NoNoNoCLR);
+					i.Add(CilOpCodes.Callvirt, core.module.DefaultImporter.ImportMethod(typeof(System.RuntimeFieldHandle).GetMethod("get_Value")));
+					i.Add(CilOpCodes.Ldc_I4_S, 12);
 					i.Add(CilOpCodes.Add);
+					i.Add(CilOpCodes.Ldind_U4);
+					i.Add(CilOpCodes.Conv_U);
+					i.Add(CilOpCodes.Ldc_I4, 0x7FFFFFF);
+					i.Add(CilOpCodes.And);
+					if (!fd.DeclaringType.IsValueType)
+					{
+						i.Add(CilOpCodes.Ldc_I4_8);
+						i.Add(CilOpCodes.And);
+					}
 				}
 			}
 			else if (target is IMethodDescriptor md)
@@ -158,10 +162,15 @@ internal class VMContext
 				if (!resolved.IsPublic)
 					ignorechecks.Add(resolved.Module.Name);
 
-				if (md.IsImportedInModule(core.module))
-					i.Add(CilOpCodes.Ldftn, md); // +_+
+				if (!md.Resolve().IsAbstract)
+				{
+					if (md.IsImportedInModule(core.module))
+						i.Add(CilOpCodes.Ldftn, md); // +_+
+					else
+						i.Add(CilOpCodes.Ldftn, core.module.DefaultImporter.ImportMethod(md));
+				}
 				else
-					i.Add(CilOpCodes.Ldftn, core.module.DefaultImporter.ImportMethod(md));
+					i.Add(CilOpCodes.Ldc_I4_0);
 			}
 			else if (target is ITypeDefOrRef td)
 			{
@@ -173,7 +182,9 @@ internal class VMContext
 				i.Add(CilOpCodes.Call, oftype);
 			}
 			else if (target is LdTokenMember ld)
+			{
 				i.Add(CilOpCodes.Ldtoken, ld.target);
+			}
 			else
 				throw new NotSupportedException();
 			i.Set8();
@@ -220,12 +231,11 @@ internal class VMContext
 
 	internal ushort TransformFieldOffset(IFieldDescriptor member)
 	{
-		var fd = new LdFieldOffset(member);
-		var result = VMTableContent.IndexOf(fd);
+		var result = VMTableContent.IndexOf((MetadataMember)member);
 		if (result == -1)
 		{
 			result = VMTableContent.Count;
-			VMTableContent.Add(fd);
+			VMTableContent.Add((MetadataMember)member);
 		}
 		return (ushort)(result * 8);
 	}

@@ -15,18 +15,14 @@ public unsafe class Program
 	Button b;
 	Button c;
 	Button e;
-	long a;
-	byte h;
-	TextField ff;
+	long a = 88;
+	byte h = 2;
+	public TextField ff;
 
 	public void Write()
 	{
-		Console.WriteLine(this.GetType());
-	}
-
-	public static void W()
-	{
-		Console.WriteLine(typeof(Program));
+		Console.WriteLine(a);
+		Console.WriteLine(h);
 	}
 
 	private static void Main(string[] args)

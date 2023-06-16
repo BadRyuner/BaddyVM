@@ -288,10 +288,13 @@ internal ref struct VMWriter
 	}
 	internal void LoadLocalRef(ushort offset) => buffer.Code(ctx, VMCodes.LoadRef).Ushort(offset);
 
-	internal void SetField(uint offset, uint size)
+	internal void SetField(ushort idx, uint size)
 	{
-		buffer.SwapStack(ctx).Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add).SwapStack(ctx);
-		//buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
+		//buffer.SwapStack(ctx).Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add).SwapStack(ctx);
+		buffer.SwapStack(ctx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		Code(VMCodes.Add);
+		buffer.SwapStack(ctx);
 		switch (size)
 		{
 			case 1: buffer.Code(ctx, VMCodes.SetI1); break;
@@ -303,14 +306,18 @@ internal ref struct VMWriter
 		}
 	}
 
-	internal void LoadFieldRef(uint offset)
+	internal void LoadFieldRef(ushort idx)
 	{
-		buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
+		//buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.Add);
 	}
 
-	internal void LoadField(uint offset, uint size)
+	internal void LoadField(ushort idx, uint size)
 	{
-		buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
+		//buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		Code(VMCodes.Add);
 		switch (size)
 		{
 			case 1: buffer.Code(ctx, VMCodes.DerefI1); break;
