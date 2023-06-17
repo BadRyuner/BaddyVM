@@ -17,6 +17,7 @@ internal class _Utils
 		SetI1(ctx);
 		SetI2(ctx);
 		SetI4(ctx);
+		SetSized(ctx);
 		VMTableLoad(ctx);
 		SwapStack(ctx);
 		Pop(ctx);
@@ -161,6 +162,27 @@ internal class _Utils
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
 		.PopMem(ctx, buf).DerefI1().Save(res).PushMem(ctx, res, buf)
 		.RegisterHandler(ctx, VMCodes.DerefI1);
+
+	private static void SetSized(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("SetSized").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf)
+		.NewLocal(ctx, out var obj)
+		.NewLocal(ctx, out var structure)
+		.NewLocal(ctx, out var size)
+		.PopMem(ctx, buf).DecodeCode(2).Save(size).Save(structure).PopMem(ctx, buf).Save(obj);
+		var exit = new CilInstruction(CilOpCodes.Nop);
+		i.While(() =>
+		{
+			i.Load(size).LoadNumber(0).Compare().IfTrue(() => i.Br(exit.CreateLabel()));
+			i.Load(obj).Load(structure).DerefI1().Set1();
+			i.Inc(structure);
+			i.Inc(obj);
+			i.Dec(size);
+		});
+		i.Add(exit);
+		i.RegisterHandler(ctx, VMCodes.SetSized);
+	}
 
 	private static void SetI(VMContext ctx) => ctx.AllocManagedMethod("SetI").CilMethodBody.Instructions
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var a)

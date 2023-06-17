@@ -1,4 +1,5 @@
-﻿using BaddyVM.VM.Utils;
+﻿using AsmResolver.DotNet;
+using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
 using System;
 using System.Collections.Generic;
@@ -279,7 +280,6 @@ internal ref struct VMWriter
 
 	internal void SetField(ushort idx, uint size)
 	{
-		//buffer.SwapStack(ctx).Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add).SwapStack(ctx);
 		buffer.SwapStack(ctx);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
 		Code(VMCodes.Add);
@@ -290,21 +290,18 @@ internal ref struct VMWriter
 			case 2: buffer.Code(ctx, VMCodes.SetI2); break;
 			case 4: buffer.Code(ctx, VMCodes.SetI4); break;
 			case 8: buffer.Code(ctx, VMCodes.SetI); break;
-			default:
-				throw new NotImplementedException();
+			default: buffer.Code(ctx, VMCodes.SetSized).Ushort((ushort)size); break;
 		}
 	}
 
 	internal void LoadFieldRef(ushort idx)
 	{
-		//buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
 		buffer.Code(ctx, VMCodes.Add);
 	}
 
 	internal void LoadField(ushort idx, uint size)
 	{
-		//buffer.Code(ctx, VMCodes.Push4).Int((int)offset).Code(ctx, VMCodes.Add);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
 		Code(VMCodes.Add);
 		switch (size)
@@ -314,7 +311,7 @@ internal ref struct VMWriter
 			case 4: buffer.Code(ctx, VMCodes.DerefI4); break;
 			case 8: buffer.Code(ctx, VMCodes.DerefI); break;
 			default:
-				throw new NotImplementedException();
+				break; // load structs as ref
 		}
 	}
 

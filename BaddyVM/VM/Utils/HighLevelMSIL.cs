@@ -89,6 +89,16 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection Inc(this CilInstructionCollection i, CilLocalVariable l)
+	{
+		return i.Load(l).LoadNumber(1).Sum().Save(l);
+	}
+
+	internal static CilInstructionCollection Dec(this CilInstructionCollection i, CilLocalVariable l)
+	{
+		return i.Load(l).LoadNumber(1).Sub().Save(l);
+	}
+
 	internal static CilInstructionCollection InitBlk(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Initblk);

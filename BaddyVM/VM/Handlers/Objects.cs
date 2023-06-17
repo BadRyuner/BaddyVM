@@ -29,7 +29,6 @@ internal class Objects
 		.PopMem(ctx, adr).Save(adr)
 		.DecodeCode(1).Save(argscount);
 		i.LoadNumber(0).Save(isnewobj);
-		//i.LoadNumber(512).Stackalloc().Save(buf);
 		i.Load(argscount).LoadNumber(0b1000_0000).And().LoadNumber(0b1000_0000).Compare()
 			.IfTrue(() =>
 			{
