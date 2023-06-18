@@ -71,7 +71,7 @@ internal static class AsmResolverUtils
 			case ElementType.Enum:
 			case ElementType.Modifier:
 			default:
-				throw new NotImplementedException();
+				return VMTypes.PTR;
 		}
 	}
 

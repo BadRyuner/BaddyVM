@@ -142,19 +142,18 @@ internal class VMCore
 				case CilCode.Bne_Un: w.Bne(((CilInstructionLabel)current.Operand).Offset); break;
 				#endregion
 				#region number
-				case CilCode.Ldc_I8:
-					{
-						var res = (long)current.Operand;
-						w.LoadNumber(res);
-						break;
-					}
+				case CilCode.Ldc_I8: w.LoadNumber((long)current.Operand); break;
 				case CilCode.Ldc_R4:
 					{
 						var res = (float)current.Operand;
 						w.LoadNumber(Unsafe.As<float, int>(ref res));
 						break;
 					}
-				case CilCode.Ldc_R8: w.LoadNumber((long)current.Operand); break;
+				case CilCode.Ldc_R8:
+					{
+						var d = (double)current.Operand;
+						w.LoadNumber(Unsafe.As<double, long>(ref d)); break;
+					}
 				case CilCode.Ldc_I4:
 				case CilCode.Ldc_I4_S:
 				case CilCode.Ldc_I4_M1:
@@ -169,18 +168,18 @@ internal class VMCore
 				case CilCode.Ldc_I4_8: w.LoadNumber(current.GetLdcI4Constant()); break;
 				#endregion
 				#region math
-				case CilCode.Add: w.Add(); break;
+				case CilCode.Add: w.Add(dfp.ResolveIn1(current).IsFloat()); break;
 				case CilCode.Add_Ovf: w.Add_Ovf(); break;
 				case CilCode.Add_Ovf_Un: w.Add_Ovf_Un(); break;
-				case CilCode.Sub: w.Sub(); break;
+				case CilCode.Sub: w.Sub(dfp.ResolveIn1(current).IsFloat()); break;
 				case CilCode.Sub_Ovf: w.Sub_Ovf(); break;
 				case CilCode.Sub_Ovf_Un: w.Sub_Ovf_Un(); break;
-				case CilCode.Rem: w.Rem(); break;
+				case CilCode.Rem: w.Rem(dfp.ResolveIn1(current).IsFloat()); break;
 				case CilCode.Rem_Un: w.Rem_Un(); break;
-				case CilCode.Mul: dfp.ResolveIn2(current, ref t1, ref t2); w.Mul(t1, t2); break;
+				case CilCode.Mul: dfp.ResolveIn2(current, ref t1, ref t2); w.Mul(t1, t2, t1.IsFloat()); break;
 				case CilCode.Mul_Ovf: dfp.ResolveIn2(current, ref t1, ref t2); w.Mul_Ovf(t1, t2); break;
 				case CilCode.Mul_Ovf_Un: w.Mul_Ovf_Un(); break;
-				case CilCode.Div: dfp.ResolveIn2(current, ref t1, ref t2); w.Div(t1, t2); break;
+				case CilCode.Div: dfp.ResolveIn2(current, ref t1, ref t2); w.Div(t1, t2, t1.IsFloat()); break;
 				case CilCode.Div_Un: w.Div_Un(); break;
 				#endregion
 				#region logic

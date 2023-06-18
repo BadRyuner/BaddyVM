@@ -2,12 +2,7 @@
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
-using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Unicode;
-using System.Xml;
 
 namespace BaddyVM.VM;
 internal ref struct VMWriter
@@ -49,26 +44,52 @@ internal ref struct VMWriter
 	internal void LoadNumber(long i) => buffer.Code(ctx, VMCodes.Push8).Long(i);
 
 	#region math
-	internal void Add() { buffer.Code(ctx, VMCodes.Add); }
-	internal void Sub() { buffer.Code(ctx, VMCodes.Sub); }
+	internal void Add(bool F) 
+	{
+		if (F)
+			buffer.Code(ctx, VMCodes.FAdd);
+		else
+			buffer.Code(ctx, VMCodes.Add); 
+	}
+	internal void Sub(bool F) 
+	{ 
+		if (F)
+			buffer.Code(ctx, VMCodes.FSub);
+		else
+			buffer.Code(ctx, VMCodes.Sub); 
+	}
 	internal void Add_Ovf() { buffer.Code(ctx, VMCodes.Add_Ovf); }
 	internal void Sub_Ovf() { buffer.Code(ctx, VMCodes.Sub_Ovf); }
 	internal void Add_Ovf_Un() { buffer.Code(ctx, VMCodes.Add_Ovf_Un); }
 	internal void Sub_Ovf_Un() { buffer.Code(ctx, VMCodes.Sub_Ovf_Un); }
-	internal void Div(VMTypes f, VMTypes s) 
+	internal void Div(VMTypes f, VMTypes s, bool F) 
 	{
-		if (GeneralUtils.MathWith(f, s).IsUnsigned())
-			buffer.Code(ctx, VMCodes.UDiv);
+		if (F)
+		{
+			buffer.Code(ctx, VMCodes.FDiv);
+		}
 		else
-			buffer.Code(ctx, VMCodes.IDiv);
+		{
+			if (GeneralUtils.MathWith(f, s).IsUnsigned())
+				buffer.Code(ctx, VMCodes.UDiv);
+			else
+				buffer.Code(ctx, VMCodes.IDiv);
+		}
 	}
 	internal void Div_Un() { buffer.Code(ctx, VMCodes.UDiv); }
-	internal void Mul(VMTypes f, VMTypes s) 
+	internal void Mul(VMTypes f, VMTypes s, bool F) 
 	{
-		if (GeneralUtils.MathWith(f, s).IsUnsigned())
-			buffer.Code(ctx, VMCodes.UMul);
+		if (F)
+		{
+			buffer.Code(ctx, VMCodes.FMul);
+		}
 		else
-			buffer.Code(ctx, VMCodes.IMul);
+		{
+			if (GeneralUtils.MathWith(f, s).IsUnsigned())
+				buffer.Code(ctx, VMCodes.UMul);
+			else
+				buffer.Code(ctx, VMCodes.IMul);
+		}
 	}
 	internal void Mul_Ovf(VMTypes f, VMTypes s)
 	{
@@ -78,7 +99,13 @@ internal ref struct VMWriter
 			buffer.Code(ctx, VMCodes.IMul_Ovf);
 	}
 	internal void Mul_Ovf_Un() { buffer.Code(ctx, VMCodes.Mul_Ovf_Un); }
-	internal void Rem() { buffer.Code(ctx, VMCodes.Rem); }
+	internal void Rem(bool F) 
+	{ 
+		if (F)
+			buffer.Code(ctx, VMCodes.FRem);
+		else
+			buffer.Code(ctx, VMCodes.Rem); 
+	}
 	internal void Rem_Un() { buffer.Code(ctx, VMCodes.Rem_Un); }
 	#endregion
 	#region logic

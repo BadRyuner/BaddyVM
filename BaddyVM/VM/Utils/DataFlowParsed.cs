@@ -242,17 +242,14 @@ internal class DataFlowParsed
 			case CilCode.Newobj:
 			case CilCode.Callvirt:
 			case CilCode.Call:
-				return VMTypes.PTR;
-
-			case CilCode.Unbox:
-				return VMTypes.PTR;
+				return ((IMethodDescriptor)instr.Operand).Signature.ReturnType.ElementType.ToVMTypes();
 
 			case CilCode.Ldfld:
-				return VMTypes.PTR;
+				return ((IFieldDescriptor)instr.Operand).Signature.FieldType.ElementType.ToVMTypes();
 
 			case CilCode.Ldsflda:
 			case CilCode.Ldflda:
-				return ((FieldDefinition)instr.Operand).Signature.FieldType.IsValueType ? VMTypes.PTR : VMTypes.PTR_PTR;
+				return VMTypes.PTR;
 				
 			case CilCode.Box:
 			case CilCode.Newarr:
@@ -264,8 +261,9 @@ internal class DataFlowParsed
 			case CilCode.Ldelem:
 				return ((TypeSignature)instr.Operand).ElementType.ToVMTypes();
 
+			case CilCode.Unbox:
 			case CilCode.Unbox_Any:
-				return VMTypes.PTR;
+				return ((ITypeDefOrRef)instr.Operand).ToTypeSignature().ElementType.ToVMTypes();
 
 			case CilCode.Prefix7:
 			case CilCode.Prefix6:

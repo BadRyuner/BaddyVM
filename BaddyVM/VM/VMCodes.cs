@@ -13,8 +13,9 @@ internal enum VMCodes : byte
 	Ceq, Clt, Clt_Un, Cgt, Cgt_Un,
 
 	Add, Sub, 
+	FAdd, FSub, FMul, FDiv, FRem,
 	IMul, UMul,
-	IDiv, UDiv,
+	IDiv, UDiv, 
 	Rem,
 
 	Add_Ovf, Sub_Ovf,

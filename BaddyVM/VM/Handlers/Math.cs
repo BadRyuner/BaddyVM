@@ -26,6 +26,72 @@ internal static class Math
 		UDiv(ctx);
 		Rem(ctx);
 		RemUn(ctx);
+
+		FAdd(ctx);
+		FSub(ctx);
+		FMul(ctx);
+		FDiv(ctx);
+		FRem(ctx);
+	}
+
+	private static void FAdd(VMContext ctx)
+	{
+		ctx.AllocManagedMethod("FAdd").CilMethodBody.Instructions
+	   .NewLocal(ctx, VMTypes.R8, out var a)
+	   .NewLocal(ctx, VMTypes.R8, out var b)
+	   .NewLocal(ctx, out var buf)
+	   .PopMem(ctx, buf).Save(b)
+	   .PopMem(ctx, buf).Save(a).Load(a).Load(b).Sum().Save(a)
+	   .PushMem(ctx, a, buf)
+	   .RegisterHandler(ctx, VMCodes.FAdd);
+	}
+
+	private static void FSub(VMContext ctx)
+	{
+		ctx.AllocManagedMethod("FSub").CilMethodBody.Instructions
+	   .NewLocal(ctx, VMTypes.R8, out var a)
+	   .NewLocal(ctx, VMTypes.R8, out var b)
+	   .NewLocal(ctx, out var buf)
+	   .PopMem(ctx, buf).Save(b)
+	   .PopMem(ctx, buf).Save(a).Load(a).Load(b).Sub().Save(a)
+	   .PushMem(ctx, a, buf)
+	   .RegisterHandler(ctx, VMCodes.FSub);
+	}
+
+	private static void FMul(VMContext ctx)
+	{
+		ctx.AllocManagedMethod("FMul").CilMethodBody.Instructions
+	   .NewLocal(ctx, VMTypes.R8, out var a)
+	   .NewLocal(ctx, VMTypes.R8, out var b)
+	   .NewLocal(ctx, out var buf)
+	   .PopMem(ctx, buf).Save(b)
+	   .PopMem(ctx, buf).Save(a).Load(a).Load(b).Mul().Save(a)
+	   .PushMem(ctx, a, buf)
+	   .RegisterHandler(ctx, VMCodes.FMul);
+	}
+
+	private static void FDiv(VMContext ctx)
+	{
+		ctx.AllocManagedMethod("FDiv").CilMethodBody.Instructions
+	   .NewLocal(ctx, VMTypes.R8, out var a)
+	   .NewLocal(ctx, VMTypes.R8, out var b)
+	   .NewLocal(ctx, out var buf)
+	   .PopMem(ctx, buf).Save(b)
+	   .PopMem(ctx, buf).Save(a).Load(a).Load(b).Div().Save(a)
+	   .PushMem(ctx, a, buf)
+	   .RegisterHandler(ctx, VMCodes.FDiv);
+	}
+
+	private static void FRem(VMContext ctx)
+	{
+		ctx.AllocManagedMethod("FRem").CilMethodBody.Instructions
+	   .NewLocal(ctx, VMTypes.R8, out var a)
+	   .NewLocal(ctx, VMTypes.R8, out var b)
+	   .NewLocal(ctx, out var buf)
+	   .PopMem(ctx, buf).Save(b)
+	   .PopMem(ctx, buf).Save(a).Load(a).Load(b).Rem().Save(a)
+	   .PushMem(ctx, a, buf)
+	   .RegisterHandler(ctx, VMCodes.FRem);
 	}
 
 	private static void Add(VMContext ctx)
