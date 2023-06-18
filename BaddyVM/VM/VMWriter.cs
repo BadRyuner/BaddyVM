@@ -1,4 +1,5 @@
 ﻿using AsmResolver.DotNet;
+using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
 using System;
@@ -326,6 +327,8 @@ internal ref struct VMWriter
 	}
 
 	internal void Ret() => buffer.Code(ctx, VMCodes.Ret);
+
+	internal void Conv(VMTypes inType, CilCode code) => buffer.Code(ctx, VMCodes.Conv).Byte((byte)inType).Ushort((ushort)code);
 
 	internal void Code(VMCodes code) => buffer.Code(ctx, code);
 

@@ -177,6 +177,27 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilLocalVariable NewLocal(this CilInstructionCollection i, VMContext ctx, VMTypes type)
+	{
+		var var = type switch
+		{
+			VMTypes.I1 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.SByte),
+			VMTypes.U1 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.Byte),
+			VMTypes.I2 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.Int16),
+			VMTypes.U2 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.UInt16),
+			VMTypes.I4 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.Int32),
+			VMTypes.U4 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.UInt32),
+			VMTypes.I8 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.Int64),
+			VMTypes.U8 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.UInt64),
+			VMTypes.R4 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.Single),
+			VMTypes.R8 => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.Double),
+			VMTypes.PTR => new CilLocalVariable(ctx.core.module.CorLibTypeFactory.IntPtr),
+			_ => throw new NotImplementedException()
+		};
+		i.Owner.LocalVariables.Add(var);
+		return var;
+	}
+
 	internal static CilInstructionCollection Ret(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Ret);

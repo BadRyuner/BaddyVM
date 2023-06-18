@@ -436,38 +436,38 @@ internal class VMCore
 				#endregion
 				#region Converters
 				case CilCode.Conv_U:
-				case CilCode.Conv_I: w.Code(VMCodes.Conv_I); break;
-				case CilCode.Conv_I8: w.Code(VMCodes.Conv_I8); break;
-				case CilCode.Conv_I4: w.Code(VMCodes.Conv_I4); break;
-				case CilCode.Conv_I2: w.Code(VMCodes.Conv_I2); break;
-				case CilCode.Conv_I1: w.Code(VMCodes.Conv_I1); break;
-				case CilCode.Conv_U8: w.Code(VMCodes.Conv_U8); break;
-				case CilCode.Conv_U4: w.Code(VMCodes.Conv_U4); break;
-				case CilCode.Conv_U2: w.Code(VMCodes.Conv_U2); break;
-				case CilCode.Conv_U1: w.Code(VMCodes.Conv_U1); break;
+				case CilCode.Conv_I:
+				case CilCode.Conv_I8:
+				case CilCode.Conv_I4:
+				case CilCode.Conv_I2:
+				case CilCode.Conv_I1:
+				case CilCode.Conv_U8:
+				case CilCode.Conv_U4:
+				case CilCode.Conv_U2:
+				case CilCode.Conv_U1:
 				case CilCode.Conv_Ovf_U:
-				case CilCode.Conv_Ovf_I: w.Code(VMCodes.Conv_Ovf_I); break;
-				case CilCode.Conv_Ovf_I8: w.Code(VMCodes.Conv_Ovf_I8); break;
-				case CilCode.Conv_Ovf_I4: w.Code(VMCodes.Conv_Ovf_I4); break;
-				case CilCode.Conv_Ovf_I2: w.Code(VMCodes.Conv_Ovf_I2); break;
-				case CilCode.Conv_Ovf_I1: w.Code(VMCodes.Conv_Ovf_I1); break;
-				case CilCode.Conv_Ovf_U8: w.Code(VMCodes.Conv_Ovf_U8); break;
-				case CilCode.Conv_Ovf_U4: w.Code(VMCodes.Conv_Ovf_U4); break;
-				case CilCode.Conv_Ovf_U2: w.Code(VMCodes.Conv_Ovf_U2); break;
-				case CilCode.Conv_Ovf_U1: w.Code(VMCodes.Conv_Ovf_U1); break;
+				case CilCode.Conv_Ovf_I:
+				case CilCode.Conv_Ovf_I8:
+				case CilCode.Conv_Ovf_I4:
+				case CilCode.Conv_Ovf_I2:
+				case CilCode.Conv_Ovf_I1:
+				case CilCode.Conv_Ovf_U8:
+				case CilCode.Conv_Ovf_U4:
+				case CilCode.Conv_Ovf_U2:
+				case CilCode.Conv_Ovf_U1:
 				case CilCode.Conv_Ovf_U_Un:
-				case CilCode.Conv_Ovf_I_Un: w.Code(VMCodes.Conv_Ovf_I_Un); break;
-				case CilCode.Conv_Ovf_I8_Un: w.Code(VMCodes.Conv_Ovf_I8_Un); break;
-				case CilCode.Conv_Ovf_I4_Un: w.Code(VMCodes.Conv_Ovf_I4_Un); break;
-				case CilCode.Conv_Ovf_I2_Un: w.Code(VMCodes.Conv_Ovf_I2_Un); break;
-				case CilCode.Conv_Ovf_I1_Un: w.Code(VMCodes.Conv_Ovf_I1_Un); break;
-				case CilCode.Conv_Ovf_U8_Un: w.Code(VMCodes.Conv_Ovf_U8_Un); break;
-				case CilCode.Conv_Ovf_U4_Un: w.Code(VMCodes.Conv_Ovf_U4_Un); break;
-				case CilCode.Conv_Ovf_U2_Un: w.Code(VMCodes.Conv_Ovf_U2_Un); break;
-				case CilCode.Conv_Ovf_U1_Un: w.Code(VMCodes.Conv_Ovf_U1_Un); break;
-				case CilCode.Conv_R_Un: w.Code(VMCodes.Conv_R_Un); break;
-				case CilCode.Conv_R4: w.Code(VMCodes.Conv_R4); break;
-				case CilCode.Conv_R8: w.Code(VMCodes.Conv_R8); break;
+				case CilCode.Conv_Ovf_I_Un:
+				case CilCode.Conv_Ovf_I8_Un:
+				case CilCode.Conv_Ovf_I4_Un:
+				case CilCode.Conv_Ovf_I2_Un:
+				case CilCode.Conv_Ovf_I1_Un:
+				case CilCode.Conv_Ovf_U8_Un:
+				case CilCode.Conv_Ovf_U4_Un:
+				case CilCode.Conv_Ovf_U2_Un:
+				case CilCode.Conv_Ovf_U1_Un:
+				case CilCode.Conv_R_Un:
+				case CilCode.Conv_R4:
+				case CilCode.Conv_R8: w.Conv(dfp.ResolveIn1(current), current.OpCode.Code); break;
 				#endregion
 
 				case CilCode.Sizeof: w.LoadNumber(((ITypeDefOrRef)current.Operand).GetImpliedMemoryLayout(false).Size); break;

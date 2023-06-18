@@ -148,6 +148,8 @@ internal static class AsmResolverUtils
 				case ElementType.U8:
 				case ElementType.U:
 				case ElementType.I:
+				case ElementType.R4:
+				case ElementType.R8:
 				case ElementType.Ptr:
 				case ElementType.FnPtr:
 				case ElementType.SzArray:
