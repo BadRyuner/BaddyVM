@@ -11,10 +11,20 @@ internal class VMLayout
 	internal int GlobalHeap		= 8 * 4; // long* ???
 	internal int MethodFlags	= 8 * 5; // bit long
 
-	internal int MethodNoRet		= 0b0001;
+	internal int MethodNoRet	= 0b0001;
 
 	internal void Randomize()
 	{
-		// TODO: implement
+		var rand = Random.Shared;
+		var offsets = new int[] { LocalStackHeap, LocalStorage, VMTable, JMPBack, GlobalHeap, MethodFlags }.OrderBy(x => rand.Next()).ToArray();
+		LocalStackHeap = offsets[0];
+		LocalStorage = offsets[1];
+		VMTable = offsets[2];
+		JMPBack = offsets[3];
+		GlobalHeap = offsets[4];
+		MethodFlags = offsets[5];
+
+		offsets = new int[] { 0b1, 0b10, 0b100, 0b1000, 0b1_0000, 0b10_0000, 0b100_0000 }.OrderBy(x => rand.Next()).ToArray();
+		MethodNoRet = offsets[0];
 	}
 }

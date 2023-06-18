@@ -12,6 +12,7 @@ internal class Program
 			//m.IsPublic && 
 			m.CilMethodBody != null);
 		vm.Virtualize(methods);
+		vm.ApplyProtections = true;
 		vm.Save("D:\\Test\\Crackme.dll");
 	}
 }

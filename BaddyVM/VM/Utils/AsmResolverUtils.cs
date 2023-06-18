@@ -284,6 +284,19 @@ internal static class AsmResolverUtils
 		return body;
 	}
 
+	internal static NativeMethodBody AllocNativeMethod(this VMContext ctx, string name, MethodSignature sig)
+	{
+#if !DEBUG
+		name = "a";
+#endif
+		var method = new MethodDefinition(name, MethodAttributes.Static | MethodAttributes.PInvokeImpl | MethodAttributes.Assembly, sig);
+		method.ImplAttributes |= MethodImplAttributes.Native | MethodImplAttributes.Unmanaged | MethodImplAttributes.PreserveSig;
+		var body = new NativeMethodBody(method);
+		method.NativeMethodBody = body;
+		ctx.core.module.GetModuleType().Methods.Add(method);
+		return body;
+	}
+
 	internal static MethodDefinition AllocManagedMethod(this VMContext ctx, string name)
 	{
 #if !DEBUG

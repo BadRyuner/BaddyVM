@@ -15,7 +15,7 @@ _*Made for fun.*_
 Slower than the Yandere-dev code
 
 # How to use?
-Download latest sources, open Program.cs, change it for yourself and compile it in Release mode.
+Download latest sources, open Program.cs, change it for yourself and compile it in Release (because of the #!DEBUG directive, which turns off part of the protection in the debug release to make debugging easier for me) mode.
 
 # How it looks
 ```csharp

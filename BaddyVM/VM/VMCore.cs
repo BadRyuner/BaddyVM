@@ -19,6 +19,7 @@ internal class VMCore
 {
 	internal AssemblyDefinition assembly;
 	internal ModuleDefinition module;
+	internal bool ApplyProtections = false;
 
 	internal VMContext context;
 
@@ -547,7 +548,11 @@ internal class VMCore
 		module.MachineType = AsmResolver.PE.File.Headers.MachineType.Amd64;
 		module.IsBit32Preferred = false;
 		module.IsBit32Required = false;
-		
+
+		foreach (var type in module.GetAllTypes())
+			foreach (var m in type.Methods.Where(m => m.CilMethodBody != null))
+				Protections.GeneralProtections.Protect(context, m.CilMethodBody);
+
 		/* var image = module.ToPEImage();
 		var filebuilfer = new ManagedPEFileBuilder();
 		var file = filebuilfer.CreateFile(image);

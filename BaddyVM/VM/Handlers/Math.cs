@@ -1,10 +1,5 @@
-﻿using AsmResolver.PE.DotNet.Cil;
-using BaddyVM.VM.Utils;
+﻿using BaddyVM.VM.Utils;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BaddyVM.VM.Handlers;
 internal static class Math
