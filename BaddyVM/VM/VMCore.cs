@@ -11,6 +11,7 @@ using Echo.ControlFlow.Construction.Symbolic;
 using Echo.ControlFlow.Serialization.Blocks;
 using Echo.Platforms.AsmResolver;
 using System;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -59,14 +60,13 @@ internal class VMCore
 			{
 				foreach(var tryblock in exc) // https://github.com/Washi1337/Echo/issues/12 :(
 				{
-					if (tryblock.HandlerStart != null && tryblock.HandlerType == CilExceptionHandlerType.Finally)
+					if (tryblock.HandlerStart != null && (tryblock.HandlerType == CilExceptionHandlerType.Finally || tryblock.HandlerType == CilExceptionHandlerType.Exception))
 					{
 						var instrrange = method.CilMethodBody.Instructions
-							.SkipWhile(i => i.Offset != tryblock.HandlerStart.Offset)
-							.TakeWhile(i => i.Offset <= tryblock.HandlerEnd.Offset);
+							.SkipWhile(i => i.Offset != tryblock.HandlerStart.Offset);
+							//.TakeWhile(i => i.Offset <= tryblock.HandlerEnd.Offset);
 						controlflow = new SymbolicFlowGraphBuilder<CilInstruction>(architecture, instrrange, resolver).ConstructFlowGraph(instrrange.First().Offset, Array.Empty<long>());
 						blocks = BlockBuilder.ConstructBlocks(controlflow);
-						//dataflow = new DataFlowParsed(resolver.DataFlowGraph, method.CilMethodBody);
 						foreach (var block in blocks.GetAllBlocks())
 							ProcessBlock(exc, block, dataflow, method, writer, map);
 					}
@@ -81,6 +81,8 @@ internal class VMCore
 
 	private void ProcessBlock(IList<CilExceptionHandler> handlers, BasicBlock<CilInstruction> block, DataFlowParsed dfp, MethodDefinition md, VMWriter w, LocalHeapMap map)
 	{
+		//if (handlers.Any(h => block.Instructions.Any(i => i.Offset == h.HandlerEnd.Offset))) return;
+		if (w.AlreadyMarkedOffsets.Contains(block.Instructions[0].Offset)) return;
 		var list = block.Instructions;
 		w.Mark(list[0].Offset);
 		VMTypes t1 = default, t2 = default;
@@ -91,20 +93,17 @@ internal class VMCore
 			if (trycatch != null)
 			{
 				var isfin = trycatch.HandlerType == CilExceptionHandlerType.Finally;
+				var isExc = trycatch.HandlerType == CilExceptionHandlerType.Exception;
 				var istry = trycatch.TryStart.Offset == current.Offset;
-				if (istry)
+				if (istry) 
 				{
-					if (isfin)
-					{
-						w.BeginTry(0);
-					}
+					if (isfin) w.BeginFinTry(trycatch);
+					else if (isExc) w.BeginTryCatch(trycatch, context.TransformTryCatch(trycatch.ExceptionType));
 				}
-				else
+				else 
 				{
-					if(isfin)
-					{
-						w.BeginFinally();
-					}
+					if(isfin) w.BeginFinally(trycatch);
+					else if (isExc) w.BeginTryCatchHandler(trycatch);
 				}
 			}
 
@@ -550,8 +549,11 @@ internal class VMCore
 		module.IsBit32Required = false;
 
 		foreach (var type in module.GetAllTypes())
+		{
+			Protections.GeneralProtections.ProtectType(context, type);
 			foreach (var m in type.Methods.Where(m => m.CilMethodBody != null))
 				Protections.GeneralProtections.Protect(context, m.CilMethodBody);
+		}
 
 		/* var image = module.ToPEImage();
 		var filebuilfer = new ManagedPEFileBuilder();

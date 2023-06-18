@@ -60,6 +60,7 @@ internal class ConstMelt
 		asm.MoveLongToResult(data);
 		asm.Return();
 		proxy.NativeMethodBody.Code = asm.Compile();
+		Cache.Add(l, proxy);
 		return proxy;
 	}
 }

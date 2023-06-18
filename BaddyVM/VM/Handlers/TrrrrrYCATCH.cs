@@ -2,15 +2,65 @@
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using System;
+using System.Linq;
 
 namespace BaddyVM.VM.Handlers;
 internal class TrrrrrYCATCH
 {
 	internal static void Handle(VMContext ctx)
 	{
+		TryCatch(ctx);
 		FinTry(ctx);
 		Leave(ctx);
 		NoRet(ctx);
+	}
+
+	private static void TryCatch(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("TryCatch").CilMethodBody.Instructions;
+		i.NewLocal(ctx, out var buf).NewLocal(ctx, out var type)
+			.NewLocal(ctx, out var catchCodePtr).NewLocal(ctx, out var next);
+
+		i.DecodeCode(1).Save(type);
+		i.DecodeSignedCode(2).CodePtr().Sum().Save(catchCodePtr);
+
+		var exit = new CilInstruction(CilOpCodes.Nop);
+
+		for(int x = 0; x < ctx.TryCathTypes.Count; x++)
+			i.LoadNumber(x).Load(type).Compare().IfTrue(() =>
+			{
+				var catchType = ctx.TryCathTypes[x];
+				var tryStart = new CilInstruction(CilOpCodes.Nop);
+				var tryEnd = new CilInstruction(CilOpCodes.Nop);
+				var catchEnd = new CilInstruction(CilOpCodes.Nop);
+				var handler = new CilExceptionHandler()
+				{
+					ExceptionType = catchType,
+					TryStart = tryStart.CreateLabel(),
+					TryEnd = tryEnd.CreateLabel(),
+					HandlerStart = tryEnd.CreateLabel(),
+					HandlerEnd = catchEnd.CreateLabel(),
+					HandlerType = CilExceptionHandlerType.Exception
+				};
+				i.Owner.ExceptionHandlers.Add(handler);
+				i.Add(tryStart); // try {
+				{
+					i.Arg0().Arg1().Call(ctx.Router).Save(next); // next = VMRunner.Router(CatchCodePtr, Arg1)
+					i.Add(CilOpCodes.Leave, exit.CreateLabel()); // if no exceptions, then run pseudo "Leave"
+				}
+				i.Add(tryEnd); // } Catch {
+				{
+					i.Load(catchCodePtr).OverrideCodePos(); // Code = CatchCodePtr
+					i.Save(next).PushMem(ctx, next, buf); // Push exception
+					i.Arg0().Arg1().Call(ctx.Router).Save(next); // next = VMRunner.Router(CatchCodePtr, Arg1)
+					i.Add(CilOpCodes.Leave, exit.CreateLabel());
+				}
+				i.Add(catchEnd); // }
+			});
+
+		i.Add(exit);
+		i.Load(next).OverrideCodePos(); // Code = next
+		i.RegisterHandler(ctx, VMCodes.TryCatch);
 	}
 
 	private static void FinTry(VMContext ctx)

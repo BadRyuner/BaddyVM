@@ -55,6 +55,7 @@ internal enum VMCodes : byte
 
 	Store, Load, LoadRef,
 
+	TryCatch,
 	FinTry, Leave, NoRet,
 
 	Initblk, PushBack,

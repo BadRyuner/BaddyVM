@@ -6,7 +6,25 @@ public class Program
 {
 	private static void Main(string[] args)
 	{
-		Start();
+		AnotherTest();
+		//Start();
+	}
+
+	static void AnotherTest()
+	{
+		try
+		{
+			var list = new List<string>() { "aa", "bb" };
+			foreach (var item in list)
+			{
+				list[0] = "2";
+			}
+		}
+		catch(Exception e)
+		{
+			Console.WriteLine("CATCHED");
+		}
+		Console.ReadKey();
 	}
 
 	public static void Start()

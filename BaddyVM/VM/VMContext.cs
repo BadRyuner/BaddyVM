@@ -29,6 +29,7 @@ internal class VMContext
 	internal List<MetadataMember> VMTableContent = new(32);
 	internal List<IMethodDefOrRef> SafeCallTargets = new(16);
 	internal List<IMethodDescriptor> InterfaceCalls = new(16);
+	internal List<ITypeDefOrRef> TryCathTypes = new(8);
 	internal MethodSignature VMSig;
 
 	internal MethodDefinition Allocator;
@@ -261,6 +262,17 @@ internal class VMContext
 			InterfaceCalls.Add(member);
 		}
 		return (ushort)(result);
+	}
+
+	internal byte TransformTryCatch(ITypeDefOrRef member)
+	{
+		var result = TryCathTypes.IndexOf(member);
+		if (result == -1)
+		{
+			result = TryCathTypes.Count;
+			TryCathTypes.Add(member);
+		}
+		return (byte)(result);
 	}
 
 	internal byte GetSafeCallId(ushort idx)

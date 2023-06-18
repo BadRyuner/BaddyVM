@@ -1,4 +1,5 @@
 ﻿using AsmResolver.DotNet;
+using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
@@ -12,7 +13,8 @@ internal ref struct VMWriter
 	internal VMContext ctx = null;
 	internal Assembler assembler = null;
 	internal StringBuilder buffer = null;
-	internal Stack<string> anonlabels = new(4);
+	internal Dictionary<CilExceptionHandler, string> anonlabels = new(4);
+	internal List<int> AlreadyMarkedOffsets = new();
 	internal uint anonid = 0;
 
 	internal void Header()
@@ -20,7 +22,11 @@ internal ref struct VMWriter
 		buffer.AppendLine("use64\nlea rax, [CodeStart]\nret\nCodeStart:");
 	}
 
-	internal void Mark(int offset) => buffer.AppendLine($"IL_{offset}:");
+	internal void Mark(int offset)
+	{
+		buffer.AppendLine($"IL_{offset}:");
+		AlreadyMarkedOffsets.Add(offset);
+	}
 
 	internal void Nop() {}
 
@@ -265,25 +271,39 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.Poop);
 	}
 
-	internal void BeginTry(byte type)
+	internal void BeginFinTry(CilExceptionHandler handler)
 	{
-		if (type != 0) throw new NotImplementedException();
-
 		var finaly = $"anon_{anonid}";
 		anonid++;
-		anonlabels.Push(finaly);
+		anonlabels.Add(handler, finaly);
 
 		buffer.Code(ctx, VMCodes.FinTry).LabelOffset(finaly);
 	}
 
-	internal void BeginFinally()
+	internal void BeginFinally(CilExceptionHandler handler)
 	{
-		buffer.AppendLine(anonlabels.Pop() + ':');
+		var label = anonlabels[handler];
+		buffer.AppendLine(label + ':');
 	}
 
 	internal void EndFinally()
 	{
 		Code(VMCodes.NoRet);
+	}
+
+	internal void BeginTryCatch(CilExceptionHandler handler, byte type)
+	{
+		var finaly = $"anon_{anonid}";
+		anonid++;
+		anonlabels.Add(handler, finaly);
+
+		buffer.Code(ctx, VMCodes.TryCatch).Byte(type).LabelOffset(finaly);
+	}
+
+	internal void BeginTryCatchHandler(CilExceptionHandler handler)
+	{
+		var label = anonlabels[handler];
+		buffer.AppendLine(label + ':');
 	}
 
 	internal void Leave(int dest) => buffer.Code(ctx, VMCodes.Leave).LabelOffset(dest);
