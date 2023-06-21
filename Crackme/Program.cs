@@ -4,6 +4,18 @@ namespace Crackme;
 
 public class Program
 {
+	public class Foo : AA
+	{
+
+	}
+
+	public class Bar : Foo { }
+
+	public interface AA
+	{
+
+	}
+
 	private static void Main(string[] args)
 	{
 		AnotherTest();
@@ -12,19 +24,10 @@ public class Program
 
 	static void AnotherTest()
 	{
-		try
-		{
-			var list = new List<string>() { "aa", "bb" };
-			foreach (var item in list)
-			{
-				list[0] = "2";
-			}
-		}
-		catch(Exception e)
-		{
-			Console.WriteLine("CATCHED");
-		}
-		Console.ReadKey();
+		var bar = new Bar();
+		var o = (object)bar;
+		AA foo = (AA)o;
+		Console.WriteLine(o is AA);
 	}
 
 	public static void Start()

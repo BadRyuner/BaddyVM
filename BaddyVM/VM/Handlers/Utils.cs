@@ -24,6 +24,7 @@ internal class _Utils
 		Dup(ctx);
 		Eat(ctx);
 		Poop(ctx);
+		PoopRef(ctx);
 		Initblk(ctx);
 		Pushback(ctx);
 		CreateDelegate(ctx);
@@ -115,6 +116,11 @@ internal class _Utils
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
 		.LoadFromLocalStorage(ctx).Save(res).PushMem(ctx, res, buf)
 		.RegisterHandler(ctx, VMCodes.Poop);
+
+	private static void PoopRef(VMContext ctx) => ctx.AllocManagedMethod("PoopRef").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
+		.LoadRefFromLocalStorage(ctx).Save(res).PushMem(ctx, res, buf)
+		.RegisterHandler(ctx, VMCodes.PoopRef);
 
 	private static void Pop(VMContext ctx) => ctx.AllocManagedMethod("Pop").CilMethodBody.Instructions
 		.NewLocal(ctx, out var buf)

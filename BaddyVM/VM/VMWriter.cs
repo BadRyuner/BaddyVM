@@ -31,6 +31,12 @@ internal ref struct VMWriter
 	internal void Nop() {}
 
 	#region jumps
+	internal void Switch(int[] dests)
+	{
+		buffer.Code(ctx, VMCodes.Switch).Int(dests.Length - 1);
+		for (int i = 0; i < dests.Length; i++)
+			buffer.LabelOffset(dests[i]);
+	}
 	internal void Br(int dest) => buffer.Code(ctx, VMCodes.Br).LabelOffset(dest);
 	internal void Brtrue(int dest) => buffer.Code(ctx, VMCodes.Brtrue).LabelOffset(dest);
 	internal void Brfalse(int dest) => buffer.Code(ctx, VMCodes.Brfalse).LabelOffset(dest);
@@ -376,6 +382,49 @@ internal ref struct VMWriter
 	internal void Ret() => buffer.Code(ctx, VMCodes.Ret);
 
 	internal void Conv(VMTypes inType, CilCode code) => buffer.Code(ctx, VMCodes.Conv).Byte((byte)inType).Ushort((ushort)code);
+
+	internal void Box(ushort typeIdx, ushort size)
+	{
+		if (size < 8) // allign
+			size = 8;
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
+		LoadField(ctx._ValueFieldRuntimeType(), 8);
+		buffer.Code(ctx, VMCodes.Box).Ushort(size);
+	}
+
+	internal void Unbox(ushort size) => buffer.Code(ctx, VMCodes.Unbox).Ushort(size);
+
+	internal void Isinst(ushort to)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		LoadField(ctx._ValueFieldRuntimeType(), 8);
+		buffer.SwapStack(ctx);
+		Call(ctx._IsInstanceOfAny(), 2, true);
+	}
+
+	internal void IsinstInterface(ushort to)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		LoadField(ctx._ValueFieldRuntimeType(), 8);
+		buffer.SwapStack(ctx);
+		Call(ctx._IsInstanceOfInterface(), 2, true);
+	}
+
+	internal void Castclass(ushort to)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		LoadField(ctx._ValueFieldRuntimeType(), 8);
+		buffer.SwapStack(ctx);
+		Call(ctx._ChkCastClass(), 2, true);
+	}
+
+	internal void Castinterface(ushort to)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		LoadField(ctx._ValueFieldRuntimeType(), 8);
+		buffer.SwapStack(ctx);
+		Call(ctx._ChkCastInterface(), 2, true);
+	}
 
 	internal void Code(VMCodes code) => buffer.Code(ctx, code);
 

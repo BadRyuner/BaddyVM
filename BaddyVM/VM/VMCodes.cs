@@ -8,7 +8,7 @@ internal enum VMCodes : byte
 	Push8,
 	Ldstr,
 	
-	Br, Brtrue, Brfalse,
+	Br, Brtrue, Brfalse, Switch,
 
 	Ceq, Clt, Clt_Un, Cgt, Cgt_Un,
 
@@ -32,13 +32,15 @@ internal enum VMCodes : byte
 
 	Conv,
 
+	Box, Unbox,
+
 	NewArr, PrepareArr,
 
 	NewObjUnsafe, // unsafe because can be easy RE
 
 	CreateDelegate,
 
-	Eat, Poop,
+	Eat, Poop, PoopRef,
 
 	Dup, Pop,
 

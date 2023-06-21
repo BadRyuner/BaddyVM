@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 
 namespace BaddyVM.VM.Protections.General;
-internal class ConstMelt
+internal static class ConstMelt
 {
 	internal static Dictionary<long, MethodDefinition> Cache = new Dictionary<long, MethodDefinition>();
 

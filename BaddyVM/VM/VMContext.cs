@@ -10,6 +10,7 @@ using BaddyVM.VM.Handlers;
 using BaddyVM.VM.Utils;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Math = BaddyVM.VM.Handlers.Math;
@@ -32,7 +33,7 @@ internal class VMContext
 	internal List<ITypeDefOrRef> TryCathTypes = new(8);
 	internal MethodSignature VMSig;
 
-	internal MethodDefinition Allocator;
+	internal MethodDefinition Allocator; // src, size -> pointer to first byte. If src == 0 then just increase ptr
 	internal IMethodDescriptor MemCpy;
 	private FieldDefinition MemBuffer;
 	private FieldDefinition MemPos;
@@ -71,7 +72,11 @@ internal class VMContext
 	private void CreateAllocator()
 	{
 		//  MemoryCopy(void* source, void* destination, long destinationSizeInBytes, long sourceBytesToCopy)
-		MemCpy = core.module.DefaultImporter.ImportMethod(typeof(Buffer).GetMethod("MemoryCopy", new[] { typeof(void*), typeof(void*), typeof(long), typeof(long) }));
+		MemCpy = core.module.DefaultImporter.ImportMethod(typeof(Buffer)
+			.GetMethod("__Memmove",
+			System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+			new[] { typeof(byte*), typeof(byte*), typeof(nuint)}));
+
 		MemBuffer = new FieldDefinition("Buffer", FieldAttributes.Private | FieldAttributes.Static, PTR);
 		MemPos = new FieldDefinition("MemPos", FieldAttributes.Private | FieldAttributes.Static, PTR);
 		VMType.Fields.Add(MemBuffer);
@@ -80,9 +85,12 @@ internal class VMContext
 		var alloc = Allocator.CilMethodBody.Instructions.NewLocal(this, out var result);
 		//alloc.Arg1().LoadNumber(8).Compare().IfTrue(() => alloc.Arg0().Ret());
 		alloc.Arg1().Load(MemPos).Sum().LoadNumber(maxmem).Cgt().IfTrue(() => alloc.LoadNumber(0).Save(MemPos)) // if arg1 + mempos > maxmem then mempos = 0
-		.Load(MemBuffer).Load(MemPos).Sum().Save(result) // result = (membuf + mempos)
-		.Arg0().Load(result).Arg1().Arg1().Call(MemCpy) // MemBuf(arg0, result, arg1, arg1)
-		.Arg1().Load(MemPos).Sum().Save(MemPos) // mempos += sizetoalloc
+		.Load(MemBuffer).Load(MemPos).Sum().Save(result); // result = (membuf + mempos)
+		var skip = new CilInstruction(CilOpCodes.Nop);
+		alloc.Arg0().LoadNumber(0).Compare().IfTrue(() => alloc.Br(skip));
+		alloc.Arg0().Load(result).Arg1().Call(MemCpy); // MemCpy(arg0, result, arg1)
+		alloc.Add(skip);
+		alloc.Arg1().Load(MemPos).Sum().Save(MemPos) // mempos += sizetoalloc
 		.Load(result).Ret(); // return result
 	}
 
@@ -131,16 +139,20 @@ internal class VMContext
 			i.Load(VMTable);
 			if (x != 0)
 				i.LoadNumber(x*8).Sum();
-			if (target is FieldDefinition fd)
+			bool isField = target is MemberReference mr && mr.IsField;
+			if (isField == false && target is not MemberReference)
+				isField = target is IFieldDescriptor fd;
+			if (isField)
 			{
-				if (!fd.IsPublic)
-					ignorechecks.Add(fd.Module.Name);
+				var resolved = ((IFieldDescriptor)target).Resolve();
+				if (!resolved.IsPublic)
+					ignorechecks.Add(resolved.Module.Name);
 
-				if (fd.IsStatic)
-					i.Add(CilOpCodes.Ldsflda, fd);
+				if (resolved.IsStatic)
+					i.Add(CilOpCodes.Ldsflda, target);
 				else
 				{
-					i.Add(CilOpCodes.Ldtoken, fd);
+					i.Add(CilOpCodes.Ldtoken, target);
 					i.Save(NoNoNoCLR);
 					i.LoadRef(NoNoNoCLR);
 					i.Add(CilOpCodes.Callvirt, core.module.DefaultImporter.ImportMethod(typeof(System.RuntimeFieldHandle).GetMethod("get_Value")));
@@ -150,7 +162,7 @@ internal class VMContext
 					i.Add(CilOpCodes.Conv_U);
 					i.Add(CilOpCodes.Ldc_I4, 0x7FFFFFF);
 					i.Add(CilOpCodes.And);
-					if (!fd.DeclaringType.IsValueType)
+					if (!resolved.DeclaringType.IsValueType)
 					{
 						i.Add(CilOpCodes.Ldc_I4_8);
 						i.Add(CilOpCodes.Add);
@@ -316,6 +328,106 @@ internal class VMContext
 			typeof(MulticastDelegate).GetMethod("CtorClosed",
 				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
 				new[] { typeof(object), typeof(IntPtr) })));
+	}
+
+	private ushort _RTHV = ushort.MaxValue;
+	/// <summary>
+	/// RuntimeTypeHandle.Value
+	/// </summary>
+	internal ushort _TypeHandleGetValue()
+	{
+		if (_RTHV != ushort.MaxValue)
+			return _RTHV;
+		return _RTHV = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(RuntimeTypeHandle).GetMethod("get_Value")));
+	}
+
+	private ushort _TFH = ushort.MaxValue;
+	/// <summary>
+	/// RuntimeTypeHandle.Value
+	/// </summary>
+	internal ushort _TypeFromHandle()
+	{
+		if (_TFH != ushort.MaxValue)
+			return _TFH;
+		return _TFH = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))));
+	}
+
+	private ushort _VFRT = ushort.MaxValue;
+	/// <summary>
+	/// RuntimeType.m_handle
+	/// </summary>
+	internal ushort _ValueFieldRuntimeType()
+	{
+		if (_VFRT != ushort.MaxValue)
+			return _VFRT;
+		return _VFRT = Transform((MetadataMember)core.module.DefaultImporter.ImportField(
+			typeof(RuntimeTypeHandle).Assembly.GetType("System.RuntimeType").GetField("m_handle",
+				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)));
+	}
+
+	private ushort _RTH = ushort.MaxValue;
+	/// <summary>
+	/// RuntimeType.GetUnderlyingNativeHandle()
+	/// </summary>
+	internal ushort _RuntimeTypeHandle()
+	{
+		if (_RTH != ushort.MaxValue)
+			return _RTH;
+		return _RTH = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
+			typeof(RuntimeTypeHandle).Assembly.GetType("System.RuntimeType").GetMethod("GetUnderlyingNativeHandle",
+				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)));
+	}
+
+	private ushort _TGT = ushort.MaxValue;
+	/// <summary>
+	/// Type.GetType(string name)
+	/// </summary>
+	internal ushort _TypeGetType()
+	{
+		if (_TGT != ushort.MaxValue)
+			return _TGT;
+		return _TGT = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
+			typeof(Type).GetMethod("GetType", new[] { typeof(string) })));
+	}
+
+	private ushort _IIOA = ushort.MaxValue;
+	internal ushort _IsInstanceOfAny()
+	{
+		if (_IIOA != ushort.MaxValue)
+			return _IIOA;
+		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
+		var method = type.GetMethod("IsInstanceOfAny", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+		return _IIOA = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
+	}
+
+	private ushort _IIOI = ushort.MaxValue;
+	internal ushort _IsInstanceOfInterface()
+	{
+		if (_IIOI != ushort.MaxValue)
+			return _IIOI;
+		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
+		var method = type.GetMethod("IsInstanceOfInterface", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+		return _IIOI = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
+	}
+
+	private ushort __ChkCastClass = ushort.MaxValue;
+	internal ushort _ChkCastClass()
+	{
+		if (__ChkCastClass != ushort.MaxValue)
+			return __ChkCastClass;
+		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
+		var method = type.GetMethod("ChkCastClass", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+		return __ChkCastClass = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
+	}
+
+	private ushort __ChkCastInterface = ushort.MaxValue;
+	internal ushort _ChkCastInterface()
+	{
+		if (__ChkCastInterface != ushort.MaxValue)
+			return __ChkCastInterface;
+		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
+		var method = type.GetMethod("ChkCastInterface", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+		return __ChkCastInterface = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
 	}
 
 	/*

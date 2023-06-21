@@ -17,6 +17,8 @@ internal class Objects
 		GetVirtFunc(ctx);
 		CallInterface(ctx);
 		//NewObjUnsafe(ctx);
+		Box(ctx);
+		Unbox(ctx);
 	}
 
 	private static void CallByAddress(VMContext ctx) // unsafe 
@@ -300,4 +302,56 @@ internal class Objects
 		i.Add(exit);
 		i.RegisterHandler(ctx, VMCodes.NewObjUnsafe);
 	} */
+
+	private static void Box(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("Box").CilMethodBody.Instructions;
+		i.NewLocal(ctx, out var value).NewLocal(ctx, out var handle)
+		 .NewLocal(ctx, out var size).NewLocal(ctx, out var boxed);
+
+		i.PopMem(ctx, handle).Save(handle);
+		i.PopMem(ctx, value).Save(value);
+
+		i.LoadNumber(0).LoadNumber(8).Load(size).Sum().Call(ctx.Allocator).Save(boxed).PushMem(ctx, boxed, size);
+		i.Load(boxed).Load(handle).Set8();
+		i.IncPtr(boxed);
+
+		var end = new CilInstruction(CilOpCodes.Nop);
+
+		i.DecodeCode(2).Save(size);
+
+		i.LoadNumber(1).Load(size).Compare().IfTrue(() => i.Load(boxed).Load(value).Set1().Br(end));
+		i.LoadNumber(2).Load(size).Compare().IfTrue(() => i.Load(boxed).Load(value).Set2().Br(end));
+		i.LoadNumber(4).Load(size).Compare().IfTrue(() => i.Load(boxed).Load(value).Set4().Br(end));
+		i.LoadNumber(8).Load(size).Compare().IfTrue(() => i.Load(boxed).Load(value).Set8().Br(end));
+
+		// unalligned structs already passed as ref
+		i.Load(value).Load(boxed).Load(size).Call(ctx.MemCpy);
+
+		i.Add(end);
+		i.RegisterHandler(ctx, VMCodes.Box);
+	}
+
+	private static void Unbox(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("Unbox").CilMethodBody.Instructions;
+		i.NewLocal(ctx, out var what).NewLocal(ctx, out var size);
+		i.DecodeCode(2).Save(size);
+		i.PopMem(ctx, what).LoadNumber(8).Sum().Save(what); // Get RawObject from boxed struct
+
+		var buf = size;
+		var result = what;
+
+		var end = new CilInstruction(CilOpCodes.Nop);
+
+		i.Load(size).LoadNumber(8).Compare().IfTrue(() => i.Load(what).Deref8().Save(result).PushMem(ctx, result, buf).Br(end));
+		i.Load(size).LoadNumber(4).Compare().IfTrue(() => i.Load(what).DerefI4().Save(result).PushMem(ctx, result, buf).Br(end));
+		i.Load(size).LoadNumber(2).Compare().IfTrue(() => i.Load(what).DerefI2().Save(result).PushMem(ctx, result, buf).Br(end));
+		i.Load(size).LoadNumber(1).Compare().IfTrue(() => i.Load(what).DerefI1().Save(result).PushMem(ctx, result, buf).Br(end));
+
+		i.PushMem(ctx, result, buf);
+
+		i.Add(end);
+		i.RegisterHandler(ctx, VMCodes.Unbox);
+	}
 }

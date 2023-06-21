@@ -81,8 +81,8 @@ internal class VMCore
 
 	private void ProcessBlock(IList<CilExceptionHandler> handlers, BasicBlock<CilInstruction> block, DataFlowParsed dfp, MethodDefinition md, VMWriter w, LocalHeapMap map)
 	{
-		//if (handlers.Any(h => block.Instructions.Any(i => i.Offset == h.HandlerEnd.Offset))) return;
-		if (w.AlreadyMarkedOffsets.Contains(block.Instructions[0].Offset)) return;
+		if (w.AlreadyMarkedOffsets.Contains(block.Instructions[0].Offset)) 
+			return;
 		var list = block.Instructions;
 		w.Mark(list[0].Offset);
 		VMTypes t1 = default, t2 = default;
@@ -114,6 +114,7 @@ internal class VMCore
 				case CilCode.Pop: w.Code(VMCodes.Pop); break;
 
 				#region jumps
+				case CilCode.Switch: w.Switch(((List<ICilLabel>)current.Operand).Select(s => s.Offset).ToArray()); break;
 				case CilCode.Br_S:
 				case CilCode.Br: w.Br(((CilInstructionLabel)current.Operand).Offset); break;
 				case CilCode.Brtrue_S:
@@ -497,18 +498,39 @@ internal class VMCore
 
 				case CilCode.Initblk: w.Code(VMCodes.Initblk); break;
 
+				case CilCode.Box:
+					{
+						var type = (ITypeDefOrRef)current.Operand;
+						w.Box(context.Transform((MetadataMember)type), (ushort)type.GetImpliedMemoryLayout(false).Size); break;
+					}
+				case CilCode.Unbox_Any:
+				case CilCode.Unbox: w.Unbox((ushort)((ITypeDefOrRef)current.Operand).GetImpliedMemoryLayout(false).Size); break;
+
+				case CilCode.Isinst:
+					{
+						var type = (ITypeDefOrRef)current.Operand;
+						if (type.Resolve().IsInterface)
+							w.IsinstInterface(context.Transform((MetadataMember)type));
+						else
+							w.Isinst(context.Transform((MetadataMember)type));
+						break;
+					}
+				case CilCode.Castclass:
+					{
+						var type = (ITypeDefOrRef)current.Operand;
+						if (type.Resolve().IsInterface)
+							w.Castinterface(context.Transform((MetadataMember)type));
+						else
+							w.Castclass(context.Transform((MetadataMember)type));
+						break;
+					}
+
 				case CilCode.Break:
 				case CilCode.Jmp:
-				case CilCode.Switch:
 				case CilCode.Cpobj:
 				case CilCode.Ldobj:
 				case CilCode.Throw:
 				case CilCode.Stobj:
-				case CilCode.Box: // req own mem allocator or gc hooks or BIG switch for all box moments
-				case CilCode.Unbox_Any: // same
-				case CilCode.Unbox: // same
-				case CilCode.Isinst: // same ?
-				case CilCode.Castclass: // same?
 				case CilCode.Ldelema:
 				case CilCode.Ldelem:
 				case CilCode.Stelem:
@@ -548,13 +570,15 @@ internal class VMCore
 		module.IsBit32Preferred = false;
 		module.IsBit32Required = false;
 
-		foreach (var type in module.GetAllTypes())
+		if (ApplyProtections)
 		{
-			Protections.GeneralProtections.ProtectType(context, type);
-			foreach (var m in type.Methods.Where(m => m.CilMethodBody != null))
-				Protections.GeneralProtections.Protect(context, m.CilMethodBody);
+			foreach (var type in module.GetAllTypes())
+			{
+				Protections.GeneralProtections.ProtectType(context, type);
+				foreach (var m in type.Methods.Where(m => m.CilMethodBody != null))
+					Protections.GeneralProtections.Protect(context, m.CilMethodBody);
+			}
 		}
-
 		/* var image = module.ToPEImage();
 		var filebuilfer = new ManagedPEFileBuilder();
 		var file = filebuilfer.CreateFile(image);
@@ -567,6 +591,7 @@ internal class VMCore
 		file.Write(path);
 		*/
 
+		//module.TopLevelTypes[1].Methods[0].CilMethodBody;
 		assembly.Write(path);
 	}
 }

@@ -37,6 +37,12 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection CallVirt(this CilInstructionCollection i, IMethodDescriptor target)
+	{
+		i.Add(CilOpCodes.Callvirt, target);
+		return i;
+	}
+
 	internal static CilInstructionCollection NewObj(this CilInstructionCollection i, IMethodDescriptor target)
 	{
 		i.Add(CilOpCodes.Newobj, target);
@@ -87,6 +93,11 @@ internal static class HighLevelMSIL
 	{
 		target += number;
 		return i;
+	}
+
+	internal static CilInstructionCollection IncPtr(this CilInstructionCollection i, CilLocalVariable l)
+	{
+		return i.Load(l).LoadNumber(8).Sum().Save(l);
 	}
 
 	internal static CilInstructionCollection Inc(this CilInstructionCollection i, CilLocalVariable l)
@@ -252,7 +263,14 @@ internal static class HighLevelMSIL
 		i.LoadNumber(ctx.layout.LocalStorage);
 		i.Sum();
 		i.Add(CilOpCodes.Ldind_I);
-		//i.Add(CilOpCodes.Conv_I);
+		return i;
+	}
+
+	internal static CilInstructionCollection LoadRefFromLocalStorage(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.Add(CilOpCodes.Ldarg_1);
+		i.LoadNumber(ctx.layout.LocalStorage);
+		i.Sum();
 		return i;
 	}
 
@@ -285,6 +303,12 @@ internal static class HighLevelMSIL
 	internal static CilInstructionCollection Br(this CilInstructionCollection i, ICilLabel target)
 	{
 		i.Add(CilOpCodes.Br, target);
+		return i;
+	}
+
+	internal static CilInstructionCollection Br(this CilInstructionCollection i, in CilInstruction target)
+	{
+		i.Add(CilOpCodes.Br, target.CreateLabel());
 		return i;
 	}
 
@@ -326,25 +350,25 @@ internal static class HighLevelMSIL
 
 	internal static CilInstructionCollection DerefI8(this CilInstructionCollection i)
 	{
-		i.Add(CilOpCodes.Ldind_I1);
+		i.Add(CilOpCodes.Ldind_I8);
 		return i;
 	}
 
 	internal static CilInstructionCollection DerefI4(this CilInstructionCollection i)
 	{
-		i.Add(CilOpCodes.Ldind_I2);
+		i.Add(CilOpCodes.Ldind_I4);
 		return i;
 	}
 
 	internal static CilInstructionCollection DerefI2(this CilInstructionCollection i)
 	{
-		i.Add(CilOpCodes.Ldind_I4);
+		i.Add(CilOpCodes.Ldind_I2);
 		return i;
 	}
 
 	internal static CilInstructionCollection DerefI1(this CilInstructionCollection i)
 	{
-		i.Add(CilOpCodes.Ldind_I8);
+		i.Add(CilOpCodes.Ldind_I1);
 		return i;
 	}
 
@@ -637,6 +661,12 @@ internal static class HighLevelMSIL
 		//i.Add(CilOpCodes.Call, ctx.Router);
 		//i.Add(CilOpCodes.Ret);
 		ctx.Handlers.Add(ctx.EncryptVMCode(code), i.Owner.Owner);
+	}
+
+	internal static CilInstructionCollection Pop(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Pop);
+		return i;
 	}
 
 	internal static void Jmp(this CilInstructionCollection i, MethodDefinition md)

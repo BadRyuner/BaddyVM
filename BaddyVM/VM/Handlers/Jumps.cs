@@ -9,6 +9,7 @@ internal static class Jumps
 		Br(ctx);
 		BrTrue(ctx);
 		BrFalse(ctx);
+		Switch(ctx);
 	}
 
 	internal static void Br(VMContext ctx) => ctx.AllocManagedMethod("Br_Handle").CilMethodBody.Instructions
@@ -43,5 +44,29 @@ internal static class Jumps
 		i.Add(CilOpCodes.Jmp, ctx.Router);
 		i.Add(skip);
 		i.SkipCode(offset).RegisterHandler(ctx, VMCodes.Brfalse);
+	}
+
+	internal static void Switch(VMContext ctx)
+	{
+		var i = ctx.AllocManagedMethod("Switch").CilMethodBody.Instructions;
+		i.NewLocal(ctx, out var id).NewLocal(ctx, out var length);
+
+		i.PopMem(ctx, id).Save(id);
+		i.DecodeCode(4).Save(length);
+
+		var suc = new CilInstruction(CilOpCodes.Nop);
+
+		i.Load(id).Load(length).LessOrEq().IfTrue(() =>
+		{
+			var offset = length;
+			i.CodePtr().LoadNumber(2).Load(id).Mul().Sum().OverrideCodePos();
+			i.CodePtr().DecodeCode(2).Sum().OverrideCodePos();
+			i.Br(suc.CreateLabel());
+		});
+
+		i.CodePtr().Load(length).LoadNumber(1).Sum().LoadNumber(2).Mul().Sum().OverrideCodePos();
+
+		i.Add(suc);
+		i.RegisterHandler(ctx, VMCodes.Switch);
 	}
 }
