@@ -9,6 +9,12 @@ internal ref struct HighLevelIced
 {
 	internal Assembler asm;
 
+	internal AssemblerRegister64 Rax => rax;
+	internal AssemblerRegister64 Arg1_64 => rcx;
+	internal AssemblerRegister64 Arg2_64 => rdx;
+	internal AssemblerRegister64 Arg3_64 => r8;
+	internal AssemblerRegister64 Arg4_64 => r9;
+
 	private Dictionary<Label, byte[]> DataToEnd;
 	private VMContext ctx;
 
@@ -23,12 +29,34 @@ internal ref struct HighLevelIced
 		asm.mov(rax, __qword_ptr[l]);
 	}
 
+	internal void MovePtrToResult(Label l)
+	{
+		asm.lea(rax, __qword_ptr[l]);
+	}
+
+	internal void JmpReg(AssemblerRegister64 reg)
+	{
+		asm.jmp(reg);
+	}
+
+	internal void CallReg(AssemblerRegister64 reg)
+	{
+		asm.call(reg);
+	}
+
 	internal void Return() => asm.ret();
 
 	internal Label AddData(long value)
 	{
 		var l = asm.CreateLabel();
 		DataToEnd.Add(l, BitConverter.GetBytes(value));
+		return l;
+	}
+
+	internal Label AddData(byte[] value)
+	{
+		var l = asm.CreateLabel();
+		DataToEnd.Add(l, value);
 		return l;
 	}
 

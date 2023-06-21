@@ -4,30 +4,9 @@ namespace Crackme;
 
 public class Program
 {
-	public class Foo : AA
-	{
-
-	}
-
-	public class Bar : Foo { }
-
-	public interface AA
-	{
-
-	}
-
 	private static void Main(string[] args)
 	{
-		AnotherTest();
-		//Start();
-	}
-
-	static void AnotherTest()
-	{
-		var bar = new Bar();
-		var o = (object)bar;
-		AA foo = (AA)o;
-		Console.WriteLine(o is AA);
+		Start();
 	}
 
 	public static void Start()

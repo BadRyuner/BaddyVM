@@ -6,11 +6,17 @@ internal static class Jumps
 {
 	internal static void Handle(VMContext ctx)
 	{
+		Jmp(ctx);
 		Br(ctx);
 		BrTrue(ctx);
 		BrFalse(ctx);
 		Switch(ctx);
 	}
+
+	internal static void Jmp(VMContext ctx) => ctx.AllocManagedMethod("Jmp").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf)
+		.PopMem(ctx, buf).OverrideCodePos()
+		.RegisterHandler(ctx, VMCodes.Jmp);
 
 	internal static void Br(VMContext ctx) => ctx.AllocManagedMethod("Br_Handle").CilMethodBody.Instructions
 		.NewLocal(ctx, VMTypes.I2, out var buf)

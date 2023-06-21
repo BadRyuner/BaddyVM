@@ -164,7 +164,7 @@ internal static class AsmResolverUtils
 
 	internal static void Virtualize(this VMContext ctx, CilMethodBody body, byte[] vmcode, LocalHeapMap map)
 	{
-		var native = AllocData(ctx, body.Owner.Name);
+		var native = ctx.ProxyToCode[body.Owner].NativeMethodBody;
 		native.Code = vmcode;
 
 		body.Instructions.Clear();
@@ -220,17 +220,6 @@ internal static class AsmResolverUtils
 		//i.Load(data).FreeGlobal(ctx);
 
 		i.RetSafe();
-		/*
-		body.Instructions
-			.Call(native.Owner)
-			.ForeachArgument(0, (p) => {
-				body.Instructions.Load(p);
-				if (p.ParameterType.ElementType.Up())
-					body.Instructions.Add(CilOpCodes.Conv_I);
-			})
-			.Call(ctx.GetInvoke(body.Owner))
-			.RetSafe();
-		*/
 	}
 
 	internal static MethodDefinition GetInvoke(this VMContext ctx)
@@ -265,7 +254,7 @@ internal static class AsmResolverUtils
 		.Ret(); */
 	}
 
-	internal static NativeMethodBody AllocData(this VMContext ctx, string name)
+	internal static MethodDefinition AllocData(this VMContext ctx, string name)
 	{
 #if !DEBUG
 		name = "a";
@@ -275,7 +264,7 @@ internal static class AsmResolverUtils
 		var body = new NativeMethodBody(method);
 		method.NativeMethodBody = body;
 		ctx.core.module.GetModuleType().Methods.Add(method);
-		return body;
+		return method;
 	}
 
 	internal static NativeMethodBody AllocNativeMethod(this VMContext ctx, string name)

@@ -5,6 +5,7 @@ using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
+using BaddyVM.VM.Protections;
 using BaddyVM.VM.Utils;
 using Echo.ControlFlow.Blocks;
 using Echo.ControlFlow.Construction.Symbolic;
@@ -21,11 +22,13 @@ internal class VMCore
 	internal AssemblyDefinition assembly;
 	internal ModuleDefinition module;
 	internal bool ApplyProtections = false;
+	internal string path;
 
 	internal VMContext context;
 
 	internal VMCore(string path)
 	{
+		this.path = path;
 		assembly = AssemblyDefinition.FromFile(path);
 		module = assembly.ManifestModule;
 		context = new VMContext(this);
@@ -36,9 +39,14 @@ internal class VMCore
 
 	internal void Virtualize(IEnumerable<MethodDefinition> targets)
 	{
-		var methods = targets.Where(m => m.DeclaringType != context.VMType).ToArray(); // m.DeclaringType != context.VMType
+		var methods = targets.Where(m => m.DeclaringType != context.VMType && m.CilMethodBody?.Instructions.Any(i => i.OpCode.Code == CilCode.Jmp) == false).ToArray(); // m.DeclaringType != context.VMType
 		StringBuilder buffer = new(1024*4);
 		Reloaded.Assembler.Assembler assembler = new();
+
+		context.ProxyToCode = new(methods.Length);
+		foreach(var method in methods)
+			context.ProxyToCode.Add(method, context.AllocData(method.Name));
+
 		foreach(var method in methods) 
 		{
 			var architecture = new CilArchitecture(method.CilMethodBody);
@@ -58,7 +66,7 @@ internal class VMCore
 
 			if (exc.Count > 0)
 			{
-				foreach(var tryblock in exc) // https://github.com/Washi1337/Echo/issues/12 :(
+				foreach(var tryblock in exc) // TODO: Replace with extension call
 				{
 					if (tryblock.HandlerStart != null && (tryblock.HandlerType == CilExceptionHandlerType.Finally || tryblock.HandlerType == CilExceptionHandlerType.Exception))
 					{
@@ -525,8 +533,29 @@ internal class VMCore
 						break;
 					}
 
-				case CilCode.Break:
 				case CilCode.Jmp:
+					{
+						var target = (IMethodDefOrRef)current.Operand;
+						if (target is MethodDefinition dm && context.ProxyToCode.ContainsKey(dm))
+						{
+							w.Call(context.Transform(context.ProxyToCode[dm]), 0, true);
+							w.Code(VMCodes.Jmp);
+						}
+						else // maybe replace with native method function and some assembler tricks?
+						{
+							foreach(var v in md.Parameters)
+								w.LoadLocal(map.Get(v), v.ParameterType.IsStruct());
+							w.Call(context.Transform((MetadataMember)target), (byte)target.Signature.GetTotalParameterCount(), target.Signature.ReturnsValue);
+							w.Ret();
+						}
+						break;
+					}
+
+				case CilCode.Localloc:
+					w.Call(context._Alloc(), 1, true);
+					break;
+
+				case CilCode.Break:
 				case CilCode.Cpobj:
 				case CilCode.Ldobj:
 				case CilCode.Throw:
@@ -547,7 +576,6 @@ internal class VMCore
 				case CilCode.Prefixref:
 				case CilCode.Arglist:
 				case CilCode.Ldvirtftn:
-				case CilCode.Localloc:
 				case CilCode.Endfilter:
 				case CilCode.Unaligned:
 				case CilCode.Volatile:
@@ -572,11 +600,13 @@ internal class VMCore
 
 		if (ApplyProtections)
 		{
+			ProtectLinks.Protect(this);
+
 			foreach (var type in module.GetAllTypes())
 			{
-				Protections.GeneralProtections.ProtectType(context, type);
+				GeneralProtections.ProtectType(context, type);
 				foreach (var m in type.Methods.Where(m => m.CilMethodBody != null))
-					Protections.GeneralProtections.Protect(context, m.CilMethodBody);
+					GeneralProtections.Protect(context, m.CilMethodBody);
 			}
 		}
 		/* var image = module.ToPEImage();

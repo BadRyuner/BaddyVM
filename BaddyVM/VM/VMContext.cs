@@ -31,13 +31,14 @@ internal class VMContext
 	internal List<IMethodDefOrRef> SafeCallTargets = new(16);
 	internal List<IMethodDescriptor> InterfaceCalls = new(16);
 	internal List<ITypeDefOrRef> TryCathTypes = new(8);
+	internal Dictionary<MethodDefinition, MethodDefinition> ProxyToCode;
 	internal MethodSignature VMSig;
 
 	internal MethodDefinition Allocator; // src, size -> pointer to first byte. If src == 0 then just increase ptr
 	internal IMethodDescriptor MemCpy;
 	private FieldDefinition MemBuffer;
 	private FieldDefinition MemPos;
-	private int maxmem = 1024 * 8;
+	private int maxmem = 1024 * 32;
 
 	internal TypeSignature PTR;
 
@@ -430,18 +431,13 @@ internal class VMContext
 		return __ChkCastInterface = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
 	}
 
-	/*
-	internal ushort GetObjStub(uint size)
+	private ushort _HGAlloc = ushort.MaxValue;
+	internal ushort _Alloc()
 	{
-		if (ObjStubs.TryGetValue(size, out var res))
-			return res;
-
-		var obj = new TypeDefinition(null, $"Stub{size}", TypeAttributes.Class, core.module.CorLibTypeFactory.Object.ToTypeDefOrRef());
-		obj.IsNotPublic = true;
-		obj.ClassLayout = new ClassLayout(0, size);
-		core.module.TopLevelTypes.Add(obj);
-		res = TransformLdtoken(obj);
-		ObjStubs.Add(size, res);
-		return res;
-	}*/
+		if (_HGAlloc != ushort.MaxValue)
+			return _HGAlloc;
+		var type = typeof(Marshal);
+		var method = type.GetMethod(nameof(Marshal.AllocHGlobal), new [] { typeof(int) });
+		return _HGAlloc = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
+	}
 }

@@ -51,7 +51,7 @@ internal enum VMCodes : byte
 	CallAddress,
 	SafeCall, // just for structs, im stupid for naming
 	CallInterface,
-	Jmp, // inimplemented
+	Jmp,
 
 	SwapStack,
 
