@@ -41,7 +41,7 @@ internal static class LoadStore
 		var end = new CilInstruction(CilOpCodes.Nop);
 
 		i.Load(isvt).LoadNumber(1).Compare().IfTrue(() =>
-			i.DecodeCode(2).Save(size).Load(val).Load(adr).Load(size).Call(ctx.MemCpy).Br(end.CreateLabel())
+			i.DecodeCode(2).Save(size).Load(adr).Load(val).Load(size).CallHide(ctx, ctx.MemCpy).Br(end.CreateLabel())
 		);
 
 		i.Load(adr).Load(val).Set8();

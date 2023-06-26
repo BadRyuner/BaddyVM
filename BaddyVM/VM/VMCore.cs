@@ -4,6 +4,7 @@ using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
+using AsmResolver.PE.DotNet.Builder;
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Protections;
 using BaddyVM.VM.Utils;
@@ -19,6 +20,8 @@ using System.Text;
 namespace BaddyVM.VM;
 internal class VMCore
 {
+	internal ModuleDefinition ThisModule = ModuleDefinition.FromModule(typeof(VMCore).Assembly.ManifestModule);
+
 	internal AssemblyDefinition assembly;
 	internal ModuleDefinition module;
 	internal bool ApplyProtections = false;
@@ -26,22 +29,21 @@ internal class VMCore
 
 	internal VMContext context;
 
-	internal VMCore(string path)
+	internal VMCore(string path, bool applyProtections)
 	{
 		this.path = path;
+		ApplyProtections = applyProtections;
 		assembly = AssemblyDefinition.FromFile(path);
 		module = assembly.ManifestModule;
 		context = new VMContext(this);
 		context.Init();
-		//foreach(var t in module.GetAllTypes()) 
-		//	t.IsSequentialLayout = true;
 	}
 
 	internal void Virtualize(IEnumerable<MethodDefinition> targets)
 	{
 		var methods = targets.Where(m => m.DeclaringType != context.VMType && m.CilMethodBody?.Instructions.Any(i => i.OpCode.Code == CilCode.Jmp) == false).ToArray(); // m.DeclaringType != context.VMType
 		StringBuilder buffer = new(1024*4);
-		Reloaded.Assembler.Assembler assembler = new();
+		Reloaded.Assembler.Assembler assembler = new(1024*256, 1024*256);
 
 		context.ProxyToCode = new(methods.Length);
 		foreach(var method in methods)
@@ -49,6 +51,8 @@ internal class VMCore
 
 		foreach(var method in methods) 
 		{
+			if (method.DeclaringType == context.RefContainer) continue;
+
 			var architecture = new CilArchitecture(method.CilMethodBody);
 			var resolver = new CilStateTransitioner(architecture);
 			var controlflow = new SymbolicFlowGraphBuilder<CilInstruction>(architecture, method.CilMethodBody.Instructions, resolver).ConstructFlowGraph(0, Array.Empty<long>());
@@ -480,7 +484,13 @@ internal class VMCore
 
 				case CilCode.Sizeof: w.LoadNumber(((ITypeDefOrRef)current.Operand).GetImpliedMemoryLayout(false).Size); break;
 
-				case CilCode.Ret: w.Ret(); break;
+				case CilCode.Ret:
+					{
+						var retVal = md.Signature.ReturnType;
+						var size = md.Signature.ReturnsValue ? (md.Signature.ReturnType.IsValueType ? md.Signature.ReturnType.GetImpliedMemoryLayout(false).Size : 8) : (uint)current.Offset;
+						w.Ret((ushort)size); 
+						break;
+					}
 
 				case CilCode.Constrained:
 					{
@@ -546,7 +556,9 @@ internal class VMCore
 							foreach(var v in md.Parameters)
 								w.LoadLocal(map.Get(v), v.ParameterType.IsStruct());
 							w.Call(context.Transform((MetadataMember)target), (byte)target.Signature.GetTotalParameterCount(), target.Signature.ReturnsValue);
-							w.Ret();
+							var retVal = md.Signature.ReturnType;
+							var size = md.Signature.ReturnsValue ? (md.Signature.ReturnType.IsValueType ? md.Signature.ReturnType.GetImpliedMemoryLayout(false).Size : 8) : (uint)current.Offset;
+							w.Ret((ushort)size);
 						}
 						break;
 					}
@@ -555,11 +567,16 @@ internal class VMCore
 					w.Call(context._Alloc(), 1, true);
 					break;
 
+				case CilCode.Throw:
+					w.Code(VMCodes.Throw);
+					break;
+
+				// not tested
+				case CilCode.Ldobj: break; // skip, all structs is byref in vm
+				case CilCode.Stobj: w.SetSized((ushort)((IFieldDescriptor)current.Operand).Signature.FieldType.GetImpliedMemoryLayout(false).Size); break;
+
 				case CilCode.Break:
 				case CilCode.Cpobj:
-				case CilCode.Ldobj:
-				case CilCode.Throw:
-				case CilCode.Stobj:
 				case CilCode.Ldelema:
 				case CilCode.Ldelem:
 				case CilCode.Stelem:
@@ -600,28 +617,29 @@ internal class VMCore
 
 		if (ApplyProtections)
 		{
-			ProtectLinks.Protect(this);
-
-			foreach (var type in module.GetAllTypes())
+			foreach (var type in module.GetAllTypes().Where(t => !t.IsModuleType))
 			{
 				GeneralProtections.ProtectType(context, type);
 				foreach (var m in type.Methods.Where(m => m.CilMethodBody != null))
 					GeneralProtections.Protect(context, m.CilMethodBody);
 			}
 		}
-		/* var image = module.ToPEImage();
-		var filebuilfer = new ManagedPEFileBuilder();
-		var file = filebuilfer.CreateFile(image);
-		var builder = new SegmentBuilder();
-		foreach(var i in context.FixOffsets.Values)
-		{
-			builder.Add(i);
-		}
-		file.Sections.Add(new AsmResolver.PE.File.PESection(".tеxt", AsmResolver.PE.File.Headers.SectionFlags.MemoryRead | AsmResolver.PE.File.Headers.SectionFlags.MemoryWrite, builder));
-		file.Write(path);
-		*/
 
-		//module.TopLevelTypes[1].Methods[0].CilMethodBody;
-		assembly.Write(path);
+		var image = module.ToPEImage();
+
+		if (ApplyProtections)
+		{
+			// TBD
+		}
+		
+		var file = new ManagedPEFileBuilder().CreateFile(image);
+
+		if (ApplyProtections)
+		{
+			// TBD
+		}
+
+		//assembly.Write(path);
+		file.Write(path);
 	}
 }

@@ -4,7 +4,7 @@ using AsmResolver.DotNet.Collections;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
-using System.ComponentModel.Design;
+using BaddyVM.VM.Protections;
 using System.Runtime.InteropServices;
 
 namespace BaddyVM.VM.Utils;
@@ -29,6 +29,47 @@ internal static class HighLevelMSIL
 		i.Add(CilOpCodes.Pop);
 		i.Add(CilOpCodes.Pop);
 		return i;
+	}
+
+	internal static CilInstructionCollection Ldftn(this CilInstructionCollection i, IMethodDescriptor target)
+	{
+		i.Add(CilOpCodes.Ldftn, target);
+		return i;
+	}
+
+	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor target)
+	{
+		i.Add(CilOpCodes.Ldsfld, ctx.VMTable);
+		i.Add(CilInstruction.CreateLdcI4(ctx.layout.VMTable));
+		i.Add(CilOpCodes.Add);
+		i.Add(CilOpCodes.Ldind_I);
+		i.Add(CilInstruction.CreateLdcI4(ctx.Transform((MetadataMember)target)));
+		i.Add(CilOpCodes.Add);
+		i.Add(CilOpCodes.Ldind_I);
+		return i;
+	}
+
+	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor target, ushort reserved)
+	{
+		i.Add(CilOpCodes.Ldsfld, ctx.VMTable);
+		i.Add(CilInstruction.CreateLdcI4(reserved));
+		i.Add(CilOpCodes.Add);
+		i.Add(CilOpCodes.Ldind_I);
+		i.Add(CilInstruction.CreateLdcI4(ctx.Transform((MetadataMember)target)));
+		i.Add(CilOpCodes.Add);
+		i.Add(CilOpCodes.Ldind_I);
+		return i;
+	}
+
+	internal static void InsertLdftnHide(this CilInstructionCollection i, ref int pos, VMContext ctx, IMethodDescriptor target)
+	{
+		i.Insert(pos, CilOpCodes.Ldarg_1); pos++;
+		i.Insert(pos, CilInstruction.CreateLdcI4(ctx.layout.VMTable)); pos++;
+		i.Insert(pos, CilOpCodes.Add); pos++;
+		i.Insert(pos, CilOpCodes.Ldind_I); pos++;
+		i.Insert(pos, CilInstruction.CreateLdcI4(ctx.Transform((MetadataMember)target))); pos++;
+		i.Insert(pos, CilOpCodes.Add); pos++;
+		i.Insert(pos, CilOpCodes.Ldind_I); pos++;
 	}
 
 	internal static CilInstructionCollection Call(this CilInstructionCollection i, IMethodDescriptor target)
@@ -66,6 +107,16 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection Calli(this CilInstructionCollection i, VMContext ctx, int argscount, TypeSignature ret)
+	{
+		var args = new TypeSignature[argscount];
+		if (argscount != 0)
+			Array.Fill(args, ctx.PTR);
+		var sig = new StandAloneSignature(new MethodSignature(CallingConventionAttributes.Default, ret, args));
+		i.Add(CilOpCodes.Calli, sig);
+		return i;
+	}
+
 	internal static CilInstructionCollection Calli(this CilInstructionCollection i, VMContext ctx, MethodSignature sig)
 	{
 		var callisig = new MethodSignature(sig.Attributes, sig.ReturnType, sig.ParameterTypes.ToArray());
@@ -80,6 +131,45 @@ internal static class HighLevelMSIL
 		}
 		i.Add(CilOpCodes.Calli, new StandAloneSignature(callisig));
 		return i;
+	}
+
+	internal static void InsertCallHide(this CilInstructionCollection i, ref int pos, VMContext ctx, IMethodDescriptor md)
+	{
+		i.Insert(pos, CilOpCodes.Ldarg_1); pos++;
+		i.Insert(pos, CilInstruction.CreateLdcI4(ctx.layout.VMTable)); pos++;
+		i.Insert(pos, CilOpCodes.Add); pos++;
+		i.Insert(pos, CilOpCodes.Ldind_I); pos++;
+		i.Insert(pos, CilInstruction.CreateLdcI4(ctx.Transform((MetadataMember)md))); pos++;
+		i.Insert(pos, CilOpCodes.Add); pos++;
+		i.Insert(pos, CilOpCodes.Ldind_I); pos++;
+		i.Insert(pos, CilOpCodes.Calli, new StandAloneSignature(md.Signature)); pos++;
+	}
+
+	internal static CilInstructionCollection CallHide(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor md)
+	{
+		return i.AccessToVMTable(ctx)
+			.LoadNumber(ctx.Transform((MetadataMember)md))
+			.Sum()
+			.DerefI()
+			.Calli(ctx, md.Signature.GetTotalParameterCount(), md.Signature.ReturnsValue);
+	}
+
+	internal static CilInstructionCollection CallHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor md)
+	{
+		return i.AccessToVMTableOutsideVM(ctx)
+			.LoadNumber(ctx.Transform((MetadataMember)md))
+			.Sum()
+			.DerefI()
+			.Calli(ctx, md.Signature.GetTotalParameterCount(), md.Signature.ReturnsValue);
+	}
+
+	internal static CilInstructionCollection CallHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor md, ushort reserved)
+	{
+		return i.AccessToVMTableOutsideVM(ctx)
+			.LoadNumber(reserved)
+			.Sum()
+			.DerefI()
+			.Calli(ctx, md.Signature.GetTotalParameterCount(), md.Signature.ReturnsValue);
 	}
 
 	internal static CilInstructionCollection ForeachArgument(this CilInstructionCollection i, int skip, Action<Parameter> action)
@@ -283,6 +373,30 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection AccessToVMTableOutsideVM(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.Add(CilOpCodes.Ldsfld, ctx.VMTable);
+		return i;
+	}
+
+	internal static CilInstructionCollection GetInstanceID(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.Add(CilOpCodes.Ldarg_1);
+		i.LoadNumber(ctx.layout.InstanceId);
+		i.Sum();
+		i.Add(CilOpCodes.Ldind_I); // out -> InstanceID
+		return i;
+	}
+
+	internal static CilInstructionCollection GetRCResovler(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.Add(CilOpCodes.Ldarg_1);
+		i.LoadNumber(ctx.layout.RCResolver);
+		i.Sum();
+		i.Add(CilOpCodes.Ldind_I); // out -> RCResolver fnptr
+		return i;
+	}
+
 	internal static CilInstructionCollection While(this CilInstructionCollection i, Action action)
 	{
 		var head = new CilInstruction(CilOpCodes.Nop);
@@ -388,6 +502,24 @@ internal static class HighLevelMSIL
 	{
 		i.Add(CilOpCodes.Call, ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("FreeHGlobal")));
 		return i;
+	}
+
+	private static IMethodDescriptor allocGlobal = null;
+	internal static CilInstructionCollection AllocGlobalHide(this CilInstructionCollection i, VMContext ctx)
+	{
+		if (allocGlobal == null)
+			allocGlobal = ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) }));
+
+		return i.CallHideOutsideVM(ctx, allocGlobal);
+	}
+
+	private static IMethodDescriptor freeGlobal = null;
+	internal static CilInstructionCollection FreeGlobalHide(this CilInstructionCollection i, VMContext ctx)
+	{
+		if (freeGlobal == null)
+			freeGlobal = ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("FreeHGlobal"));
+
+		return i.CallHide(ctx, freeGlobal);
 	}
 
 	internal static CilInstructionCollection Sum(this CilInstructionCollection i)
@@ -653,8 +785,26 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection SetJMPBack(this CilInstructionCollection i, VMContext ctx, MethodDefinition @this)
+	{
+		i.Add(CilOpCodes.Ldarg_1);
+		i.Add(CilInstruction.CreateLdcI4(ctx.layout.JMPBack));
+		i.Sum();
+		i.Ldftn(@this);
+		i.Set8();
+		return i;
+	}
+
+	internal static CilInstructionCollection MoveToGlobalMem(this CilInstructionCollection i, VMContext ctx)
+	{
+		i.CallHide(ctx, ctx.Allocator);
+		return i;
+	}
+
 	internal static void RegisterHandler(this CilInstructionCollection i, VMContext ctx, VMCodes code)
 	{
+		AntiDebug.DoSomeDebugChecks(i, ctx);
+
 		i.Add(CilOpCodes.Jmp, ctx.Router);
 		//i.Add(CilOpCodes.Ldarg_0);
 		//i.Add(CilOpCodes.Ldarg_1);
@@ -666,6 +816,12 @@ internal static class HighLevelMSIL
 	internal static CilInstructionCollection Pop(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Pop);
+		return i;
+	}
+
+	internal static CilInstructionCollection Throw(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Throw);
 		return i;
 	}
 
@@ -750,7 +906,7 @@ internal static class HighLevelMSIL
 	{
 		i.Add(CilOpCodes.Ldarg_1);
 		i.Add(CilInstruction.CreateLdcI4(ctx.layout.MethodFlags));
-		return i.Sum();
+		return i.Sum().DerefI();
 	}
 
 	internal static CilInstructionCollection CheckIfNoRet(this CilInstructionCollection i, VMContext ctx)

@@ -7,11 +7,10 @@ using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Handlers;
+using BaddyVM.VM.Protections;
 using BaddyVM.VM.Utils;
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Math = BaddyVM.VM.Handlers.Math;
 
@@ -34,6 +33,10 @@ internal class VMContext
 	internal Dictionary<MethodDefinition, MethodDefinition> ProxyToCode;
 	internal MethodSignature VMSig;
 
+	internal TypeDefinition RefContainer;
+	internal MethodDefinition RCResolver;
+	internal MethodDefinition RCNext;
+
 	internal MethodDefinition Allocator; // src, size -> pointer to first byte. If src == 0 then just increase ptr
 	internal IMethodDescriptor MemCpy;
 	private FieldDefinition MemBuffer;
@@ -43,8 +46,6 @@ internal class VMContext
 	internal TypeSignature PTR;
 
 	internal int MaxArgs = 0;
-	//internal HashSet<int> ObjSizes = new();
-	//private Dictionary<uint, ushort> ObjStubs = new(4);
 	internal Dictionary<IMethodDefOrRef, ushort> NewObjUnsafeData = new(4);
 
 	internal MetadataMember CreateObject;
@@ -57,7 +58,8 @@ internal class VMContext
 
 	internal void Init()
 	{
-		PTR = core.module.CorLibTypeFactory.Int32.MakePointerType();
+		//PTR = core.module.CorLibTypeFactory.Int32.MakePointerType();
+		PTR = core.module.CorLibTypeFactory.Void.MakePointerType();
 		VMSig = new MethodSignature(CallingConventionAttributes.Default, PTR, new TypeSignature[] { PTR, PTR });
 		VMType = new TypeDefinition(null, "VMRunner", TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, core.module.CorLibTypeFactory.Object.ToTypeDefOrRef());
 		Router = this.AllocManagedMethod("Router");
@@ -68,11 +70,22 @@ internal class VMContext
 		//CreateObject = (MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(Activator).GetMethod("CreateInstance", new[] { typeof(Type) })); 
 		CreateObject = (MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(System.Runtime.Serialization.FormatterServices).GetMethod("GetUninitializedObject", new[] { typeof(Type) }));
 		CreateAllocator();
+		RefContainer = new MemberCloner(core.module).Include(core.ThisModule.TopLevelTypes.First(t => t.Name == "RefContainer")).Clone().ClonedTopLevelTypes.First();
+		core.module.TopLevelTypes.Add(RefContainer);
+		RefContainer.Name = "a";
+		RCResolver = RefContainer.Methods.First(m => m.Name == "Resolve");
+		RCNext = RefContainer.Methods.First(m => m.Name == "Next");
+		foreach (var mm in RefContainer.Methods)
+			if (!mm.IsConstructor)
+				mm.Name = "a";
+
+		if (core.ApplyProtections)
+			AntiDebug.Register(this);
 	}
 
 	private void CreateAllocator()
 	{
-		//  MemoryCopy(void* source, void* destination, long destinationSizeInBytes, long sourceBytesToCopy)
+		//  MemoryCopy(void* dest, void* source, void* size)
 		MemCpy = core.module.DefaultImporter.ImportMethod(typeof(Buffer)
 			.GetMethod("__Memmove",
 			System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
@@ -89,7 +102,7 @@ internal class VMContext
 		.Load(MemBuffer).Load(MemPos).Sum().Save(result); // result = (membuf + mempos)
 		var skip = new CilInstruction(CilOpCodes.Nop);
 		alloc.Arg0().LoadNumber(0).Compare().IfTrue(() => alloc.Br(skip));
-		alloc.Arg0().Load(result).Arg1().Call(MemCpy); // MemCpy(arg0, result, arg1)
+		alloc.Load(result).Arg0().Arg1().CallHideOutsideVM(this, MemCpy); // MemCpy(result, arg0, arg1)
 		alloc.Add(skip);
 		alloc.Arg1().Load(MemPos).Sum().Save(MemPos) // mempos += sizetoalloc
 		.Load(result).Ret(); // return result
@@ -203,9 +216,13 @@ internal class VMContext
 				throw new NotSupportedException();
 			i.Set8();
 		}
+
+		if (core.ApplyProtections)
+			AntiDebug.OnVMCctorBuilded(this);
+
 		i.Ret();
 
-		foreach(var x in ignorechecks)
+		foreach (var x in ignorechecks)
 		{
 			core.assembly.CustomAttributes.Add(new CustomAttribute(attr.Methods.First(), new CustomAttributeSignature(new CustomAttributeArgument(core.module.CorLibTypeFactory.String, x.ToString().Replace(".dll", null)))));
 		}

@@ -24,25 +24,23 @@ internal ref struct HighLevelIced
 		DataToEnd = new(4)
 	};
 
-	internal void MoveLongToResult(Label l)
+	internal void KickDnspy()
 	{
-		asm.mov(rax, __qword_ptr[l]);
+		var l = asm.CreateLabel();
+		asm.lea(rax, __[l]);
+		asm.jmp(rax);
+		asm.Label(ref l);
 	}
 
-	internal void MovePtrToResult(Label l)
-	{
-		asm.lea(rax, __qword_ptr[l]);
-	}
+	internal void MoveLongToResult(Label l) => asm.mov(rax, __qword_ptr[l]);
 
-	internal void JmpReg(AssemblerRegister64 reg)
-	{
-		asm.jmp(reg);
-	}
+	internal void MovePtrToResult(Label l) => asm.lea(rax, __qword_ptr[l]);
 
-	internal void CallReg(AssemblerRegister64 reg)
-	{
-		asm.call(reg);
-	}
+	internal void JmpReg(AssemblerRegister64 reg) => asm.jmp(reg);
+
+	internal void CallReg(AssemblerRegister64 reg) => asm.call(reg);
+
+	internal void ClearReg(AssemblerRegister32 reg) => asm.xor(reg, reg);
 
 	internal void Return() => asm.ret();
 

@@ -28,7 +28,13 @@ internal class _Utils
 		Initblk(ctx);
 		Pushback(ctx);
 		CreateDelegate(ctx);
+		PushInstanceID(ctx);
 	}
+
+	private static void PushInstanceID(VMContext ctx) => ctx.AllocManagedMethod("PIID").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
+		.GetInstanceID(ctx).Save(res).PushMem(ctx, res, buf)
+		.RegisterHandler(ctx, VMCodes.PushInstanceID); 
 
 	private static void CreateDelegate(VMContext ctx)
 	{

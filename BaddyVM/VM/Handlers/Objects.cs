@@ -125,7 +125,7 @@ internal class Objects
 
 		i.NewLocal(ctx, out var saveretval);
 
-		for(int x = 0; x < ctx.SafeCallTargets.Count; x++)
+		for (int x = 0; x < ctx.SafeCallTargets.Count; x++)
 		{
 			i.Load(type).LoadNumber(x).Compare().IfTrue(() =>
 			{
@@ -142,29 +142,12 @@ internal class Objects
 					retval = gits.Fix(ctx);
 				}
 
-				//if (!dict.TryGetValue(retval, out var loc))
-				//{
-				//	i.NewLocal(retval, out loc);
-				//	dict.Add(retval, loc);
-				//}
-				/*
-				if (retval.GetImpliedMemoryLayout(false).Size <= 8)
-				{
-					i.Load(adr).Calli(ctx, target.Signature).Save(adr).PushMem(ctx, adr, buf);
-					i.Br(endl);
-				}
-				else
-				{
-					i.Load(adr).Calli(ctx, target.Signature).Save(loc);
-					var size = retval.GetImpliedMemoryLayout(false).Size;
-					i.LoadRef(loc).LoadNumber((int)size).Call(ctx.Allocator).Save(adr).PushMem(ctx, adr, buf);
-					i.Br(endl);
-				} */
+				i.NewLocal(retval, out var ret);
 
-				//i.Load(adr).Calli(ctx, target.Signature).Save(saveretval);
-				i.Load(adr).Calli(ctx, ((MethodSignature)target.Signature).GetTotalParameterCount(), true).Save(saveretval);
+				i.Load(adr).Calli(ctx, ((MethodSignature)target.Signature).GetTotalParameterCount(), retval).Save(ret)
+					.LoadRef(ret).Save(saveretval);
 				var size = retval.GetImpliedMemoryLayout(false).Size;
-				i.Load(saveretval).LoadNumber((int)size).Call(ctx.Allocator).Save(adr).PushMem(ctx, adr, buf);
+				i.Load(saveretval).LoadNumber((int)size).CallHide(ctx, ctx.Allocator).Save(adr).PushMem(ctx, adr, buf);
 				i.Br(endl);
 			});
 		}
@@ -312,7 +295,7 @@ internal class Objects
 		i.PopMem(ctx, handle).Save(handle);
 		i.PopMem(ctx, value).Save(value);
 
-		i.LoadNumber(0).LoadNumber(8).Load(size).Sum().Call(ctx.Allocator).Save(boxed).PushMem(ctx, boxed, size);
+		i.LoadNumber(0).LoadNumber(8).Load(size).Sum().CallHide(ctx, ctx.Allocator).Save(boxed).PushMem(ctx, boxed, size);
 		i.Load(boxed).Load(handle).Set8();
 		i.IncPtr(boxed);
 
@@ -326,7 +309,7 @@ internal class Objects
 		i.LoadNumber(8).Load(size).Compare().IfTrue(() => i.Load(boxed).Load(value).Set8().Br(end));
 
 		// unalligned structs already passed as ref
-		i.Load(value).Load(boxed).Load(size).Call(ctx.MemCpy);
+		i.Load(value).Load(boxed).Load(size).CallHide(ctx, ctx.MemCpy);
 
 		i.Add(end);
 		i.RegisterHandler(ctx, VMCodes.Box);

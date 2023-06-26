@@ -72,7 +72,7 @@ public class Program
 			if (good)
 				MessageBox.Query("Mission Completed!", ":)");
 			else
-				MessageBox.Query("Bad Pin!", "Try Again! (Press ESC)");
+				MessageBox.Query("Bad Pin!", "Try Again!");
 		};
 
 		window.Add(button);

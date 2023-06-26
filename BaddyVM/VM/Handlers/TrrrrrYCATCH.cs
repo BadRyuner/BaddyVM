@@ -13,6 +13,7 @@ internal class TrrrrrYCATCH
 		FinTry(ctx);
 		Leave(ctx);
 		NoRet(ctx);
+		Throw(ctx);
 	}
 
 	private static void TryCatch(VMContext ctx)
@@ -45,14 +46,14 @@ internal class TrrrrrYCATCH
 				i.Owner.ExceptionHandlers.Add(handler);
 				i.Add(tryStart); // try {
 				{
-					i.Arg0().Arg1().Call(ctx.Router).Save(next); // next = VMRunner.Router(CatchCodePtr, Arg1)
+					i.Arg0().Arg1().CallHide(ctx, ctx.Router).Save(next); // next = VMRunner.Router(CatchCodePtr, Arg1)
 					i.Add(CilOpCodes.Leave, exit.CreateLabel()); // if no exceptions, then run pseudo "Leave"
 				}
 				i.Add(tryEnd); // } Catch {
 				{
 					i.Load(catchCodePtr).OverrideCodePos(); // Code = CatchCodePtr
 					i.Save(next).PushMem(ctx, next, buf); // Push exception
-					i.Arg0().Arg1().Call(ctx.Router).Save(next); // next = VMRunner.Router(CatchCodePtr, Arg1)
+					i.Arg0().Arg1().CallHide(ctx, ctx.Router).Save(next); // next = VMRunner.Router(CatchCodePtr, Arg1)
 					i.Add(CilOpCodes.Leave, exit.CreateLabel());
 				}
 				i.Add(catchEnd); // }
@@ -90,14 +91,14 @@ internal class TrrrrrYCATCH
 		i.Add(trystart);
 		i.CodePtr();
 		i.Arg1();
-		i.Call(ctx.Router);
+		i.CallHide(ctx, ctx.Router);
 		i.Save(next);
 		i.LoadNumber(1).Save(ok);
 		i.Add(CilOpCodes.Leave_S, jmp.CreateLabel());
 		i.Add(finstart);
 		i.Load(finallybegin);
 		i.Arg1();
-		i.Call(ctx.Router);
+		i.CallHide(ctx, ctx.Router);
 		i.Add(CilOpCodes.Pop);
 		i.Add(CilOpCodes.Endfinally);
 		i.Add(finend);
@@ -115,4 +116,8 @@ internal class TrrrrrYCATCH
 	private static void NoRet(VMContext ctx) => ctx.AllocManagedMethod("NoRet").CilMethodBody.Instructions
 		.LoadNumber(0).Ret()
 		.RegisterHandlerNoJmp(ctx, VMCodes.NoRet);
+
+	private static void Throw(VMContext ctx) => ctx.AllocManagedMethod("Throw").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf)
+		.PopMem(ctx, buf).Throw().RegisterHandlerNoJmp(ctx, VMCodes.Throw);
 }

@@ -10,6 +10,7 @@ using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using Iced.Intel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace BaddyVM.VM.Utils;
@@ -175,16 +176,17 @@ internal static class AsmResolverUtils
 
 		var stacksize = body.MaxStack * 8 + 160; // 160 - overhead for stack safety >_<
 
-		//i.LoadNumber(stacksize).AllocGlobal(ctx).Save(stack); // stack = new[stacksize]
-		i.LoadNumber(stacksize).Stackalloc().Save(stack); // stack = new[stacksize]
+		i.LoadNumber(stacksize).AllocGlobalHide(ctx).Save(stack); // stack = new[stacksize]
 
 		//var datasize = ctx.layout.VMHeaderEnd + (body.LocalVariables.Count + body.Owner.Parameters.Count) * 8 + 8;
 		var datasize = map.maxsize + 16;
 
-		//i.LoadNumber(datasize).AllocGlobal(ctx).Save(data); // data = new[datasize]
-		i.LoadNumber(datasize).Stackalloc().Save(data); // data = new[datasize]
+		i.LoadNumber(datasize).AllocGlobalHide(ctx).Save(data); // data = new[datasize]
 
 		i.Load(data).LoadNumber(ctx.layout.LocalStackHeap).Sum().Load(stack).Set8(); // data[stackoffset] = stack
+
+		i.Load(data).LoadNumber(ctx.layout.InstanceId).Sum().CallHideOutsideVM(ctx, ctx.RCNext).Set8();
+		i.Load(data).LoadNumber(ctx.layout.RCResolver).Sum().Ldftn(ctx.RCResolver).Set8();
 
 		int counter = ctx.layout.VMHeaderEnd;
 		if (!body.Owner.IsStatic)
@@ -197,9 +199,6 @@ internal static class AsmResolverUtils
 
 		foreach(var arg in body.Owner.Parameters) // TODO: add support for structs
 		{
-			//if (arg.ParameterType is ByReferenceTypeSignature)
-			//	i.Load(data).LoadNumber(counter).Sum().LoadRef(arg).Set8();
-			//else
 			i.Load(data).LoadNumber(counter).Sum().Load(arg).Set8(); // data[argoffset] = arg
 			counter += 8;
 		}
@@ -212,12 +211,12 @@ internal static class AsmResolverUtils
 		i.Load(data).LoadNumber(ctx.layout.MethodFlags).Sum().LoadNumber(methodflags).Set8(); // data[methodflagsoffset] = methodflags
 		i.Load(data).LoadNumber(ctx.layout.VMTable).Sum().Load(ctx.VMTable).Set8();// data[vmtableoffset] = vmtable
 
-		i.Call(native.Owner) 
+		i.CallHideOutsideVM(ctx, native.Owner) 
 		.Load(data)
-		.Call(ctx.GetInvoke()); // Invoker(code, data);
+		.CallHideOutsideVM(ctx, ctx.GetInvoke()); // Invoker(code, data);
 
-		//i.Load(stack).FreeGlobal(ctx);
-		//i.Load(data).FreeGlobal(ctx);
+		if (body.Owner.Signature.ReturnType.IsStruct())
+			i.Add(CilOpCodes.Ldobj, body.Owner.Signature.ReturnType.ToTypeDefOrRef());
 
 		i.RetSafe();
 	}
@@ -236,22 +235,7 @@ internal static class AsmResolverUtils
 	{
 		var i = method.CilMethodBody.Instructions;
 		i.Clear();
-
-		i.Add(CilOpCodes.Ldarg_0);
-		i.Add(CilOpCodes.Ldarg_1);
-		i.Add(CilOpCodes.Call, ctx.Router);
-		i.Add(CilOpCodes.Ret);
-
-
-		/*
-		i.NewLocal(ctx, out var mem).NewLocal(ctx, out var nostackhax)
-		.LoadNumber(512).Stackalloc().Save(mem) // stack = new[512];
-		.LoadNumber(512).Stackalloc().Save(nostackhax)
-		.Load(mem).LoadNumber(ctx.layout.LocalStackHeap).Sum().Load(nostackhax).Set8() // stack[localheap] = new[512]
-		.Load(mem).LoadNumber(ctx.layout.VMTable).Sum().Load(ctx.VMTable).Set8() // stack[vmtable] = VMRunner.VMTable
-		.ForeachArgument(1, (p) => i.Load(mem).LoadNumber(offset).Sum().Load(p).Set8().Inc(ref offset, 8)) // stack[offset] = arg; offset += 8;
-		.Load(method.Parameters[0]).Load(mem).Call(ctx.Router) // invoke(code, mem)
-		.Ret(); */
+		i.Add(CilOpCodes.Jmp, ctx.Router);
 	}
 
 	internal static MethodDefinition AllocData(this VMContext ctx, string name)

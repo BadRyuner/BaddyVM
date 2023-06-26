@@ -3,6 +3,8 @@ using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
+using Reloaded.Assembler.Definitions;
+using System.Diagnostics;
 using System.Text;
 
 namespace BaddyVM.VM;
@@ -143,6 +145,7 @@ internal ref struct VMWriter
 	internal void DerefI2() => buffer.Code(ctx, VMCodes.DerefI2);
 	internal void DerefI1() => buffer.Code(ctx, VMCodes.DerefI1);
 
+	internal void SetSized(ushort size) => buffer.Code(ctx, VMCodes.SetSized).Ushort(size);
 	internal void SetI() => buffer.Code(ctx, VMCodes.SetI);
 	internal void SetI4() => buffer.Code(ctx, VMCodes.SetI4);
 	internal void SetI2() => buffer.Code(ctx, VMCodes.SetI2);
@@ -150,7 +153,11 @@ internal ref struct VMWriter
 	#endregion
 
 	#region arrays
-	internal void NewArr(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.NewArr);
+	internal void NewArr(ushort idx)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.NewArr); 
+		RegisterHandle();
+	}
 
 	// *((offset * size) + header) = result; Where header == 8
 	internal void StelemI() => buffer.Code(ctx, VMCodes.PrepareArr).Byte(1).Byte(8).Code(ctx, VMCodes.SetI);
@@ -182,6 +189,8 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.CallAddress).Byte(argscount);
 		if (!ret)
 			Code(VMCodes.Pop);
+		else
+			RegisterHandle();
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
@@ -196,6 +205,8 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.CallAddress).Byte(argscount);
 		if (!ret)
 			Code(VMCodes.Pop);
+		else
+			RegisterHandle();
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
@@ -204,6 +215,8 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.GetVirtFunc).Short((short)((argscount-1)*8)).Ushort((ushort)(offset.chunk * 8)).Ushort(offset.offset).Code(ctx, VMCodes.CallAddress).Byte(argscount);
 		if (!ret)
 			Code(VMCodes.Pop);
+		else
+			RegisterHandle();
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
@@ -224,6 +237,7 @@ internal ref struct VMWriter
 					buffer.Short((short)c[i]);
 		}
 		buffer.Short(0); // \0
+		RegisterHandle();
 	}
 
 	// TODO: add support for structs (unbox them and copy)
@@ -238,11 +252,13 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.Pop); 
 		buffer.Code(ctx, VMCodes.Poop);
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, args);
+		RegisterHandle();
 	}
 
 	internal void NewObjUnsafe(ushort idx)
 	{
 		buffer.Code(ctx, VMCodes.NewObjUnsafe).Ushort(idx);
+		RegisterHandle();
 		/*
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetObjStub(size));
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject));
@@ -266,6 +282,7 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateCtor());
 		buffer.Code(ctx, VMCodes.CreateDelegate);
+		RegisterHandle();
 	}
 
 	internal void ReplaceTypeHandle(ushort idx)
@@ -379,7 +396,11 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.PushBack).Ushort((ushort)(offset * (ushort)8));
 	}
 
-	internal void Ret() => buffer.Code(ctx, VMCodes.Ret);
+	internal void Ret(ushort size)
+	{
+		if (size is 8 or 4 or 2 or 1) size = 0;
+		buffer.Code(ctx, VMCodes.Ret).Ushort(size);
+	}
 
 	internal void Conv(VMTypes inType, CilCode code) => buffer.Code(ctx, VMCodes.Conv).Byte((byte)inType).Ushort((ushort)code);
 
@@ -428,11 +449,30 @@ internal ref struct VMWriter
 
 	internal void Code(VMCodes code) => buffer.Code(ctx, code);
 
+	private void RegisterHandle()
+	{
+		buffer.Code(ctx, VMCodes.Dup);
+		buffer.Code(ctx, VMCodes.PushInstanceID);
+		buffer.Code(ctx, VMCodes.SwapStack);
+		buffer.Code(ctx, VMCodes.Push4).Int(0);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.RCResolver));
+		buffer.Code(ctx, VMCodes.CallAddress).Byte(3);
+		buffer.Code(ctx, VMCodes.Pop);
+	}
+
 	internal byte[] Finish()
 	{
 #if false
 		Console.WriteLine(buffer.ToString());
 #endif
-		return assembler.Assemble(buffer.ToString());
+		try
+		{
+			return assembler.Assemble(buffer.ToString());
+		}
+		catch(FasmException ex)
+		{
+			Console.WriteLine($"Line: {ex.Line}\nErrorCode: {ex.ErrorCode}\nMnemonics:\n{string.Join('\n', ex.Mnemonics)}");
+			throw ex;
+		}
 	}
 }

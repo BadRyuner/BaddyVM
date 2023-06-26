@@ -32,7 +32,7 @@ internal enum VMCodes : byte
 
 	Conv,
 
-	Box, Unbox,
+	Box, Unbox, Throw,
 
 	NewArr, PrepareArr,
 
@@ -63,6 +63,8 @@ internal enum VMCodes : byte
 	Initblk, PushBack,
 
 	Ret,
+
+	PushInstanceID,
 
 	Intrinsic, // TODO, Add intrinsics like Console.WriteLine -> asm call to sys
 			   // or direct write to buffer via field in Console class
