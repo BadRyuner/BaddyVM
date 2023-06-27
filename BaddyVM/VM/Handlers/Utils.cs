@@ -48,8 +48,15 @@ internal class _Utils
 		 .PopMem(ctx, buf).Save(fn)
 		 .PopMem(ctx, buf).Save(thus);
 		var alsoDelegate = DelForPtr;
-		i.Load(fn).Load(type).Load(DelForPtr).Calli(ctx, 2, true).Save(alsoDelegate);
-		i.Load(thus).LoadNumber(0).Compare().LoadNumber(0).Compare().IfTrue(() => i.Load(alsoDelegate).Load(thus).Load(fn).Load(DelCtor).Calli(ctx, 3, false));
+		//i.Load(fn).Load(type).Load(DelForPtr).Calli(ctx, 2, true).Save(alsoDelegate);
+		//i.Load(thus).LoadNumber(0).Compare().LoadNumber(0).Compare().IfTrue(() => i.Load(alsoDelegate).Load(thus).Load(fn).Load(DelCtor).Calli(ctx, 3, false));
+		var rt = typeof(Type).Assembly.GetType("System.RuntimeType").GetMethod("GetUnderlyingNativeHandle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+		i.Load(type).Load(DelForPtr).Calli(ctx, 1, true).Save(alsoDelegate);
+		i.Load(alsoDelegate)
+			.Load(type).CallHide(ctx, ctx.core.module.DefaultImporter.ImportMethod(rt))
+			.Set8();
+		i.Load(alsoDelegate).Load(thus).Load(fn).Load(DelCtor).Calli(ctx, 3, false);
+
 		i.PushMem(ctx, alsoDelegate, buf);
 		i.RegisterHandler(ctx, VMCodes.CreateDelegate);
 	}

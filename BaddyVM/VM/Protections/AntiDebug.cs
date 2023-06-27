@@ -109,7 +109,7 @@ internal static class AntiDebug
 	{
 		if (ForceDisable) return;
 		var i = ctx.VMType.GetStaticConstructor().CilMethodBody.Instructions;
-		i.LdftnHideOutsideVM(ctx, Exit, ExitIdx);
+		i.LdftnHideOutsideVM(ctx, ExitIdx);
 		i.CallHideOutsideVM(ctx, PebCheck, PebCheckIdx);
 	}
 }

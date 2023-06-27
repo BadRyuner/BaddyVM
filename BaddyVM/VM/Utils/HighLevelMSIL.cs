@@ -40,22 +40,16 @@ internal static class HighLevelMSIL
 	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor target)
 	{
 		i.Add(CilOpCodes.Ldsfld, ctx.VMTable);
-		i.Add(CilInstruction.CreateLdcI4(ctx.layout.VMTable));
-		i.Add(CilOpCodes.Add);
-		i.Add(CilOpCodes.Ldind_I);
 		i.Add(CilInstruction.CreateLdcI4(ctx.Transform((MetadataMember)target)));
 		i.Add(CilOpCodes.Add);
 		i.Add(CilOpCodes.Ldind_I);
 		return i;
 	}
 
-	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor target, ushort reserved)
+	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, ushort reserved)
 	{
 		i.Add(CilOpCodes.Ldsfld, ctx.VMTable);
 		i.Add(CilInstruction.CreateLdcI4(reserved));
-		i.Add(CilOpCodes.Add);
-		i.Add(CilOpCodes.Ldind_I);
-		i.Add(CilInstruction.CreateLdcI4(ctx.Transform((MetadataMember)target)));
 		i.Add(CilOpCodes.Add);
 		i.Add(CilOpCodes.Ldind_I);
 		return i;

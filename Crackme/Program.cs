@@ -47,7 +47,8 @@ public class Program
 				else
 					labels[iCopy].Text = "9";
 			};
-			window.Add(up, down);
+			window.Add(up);
+			window.Add(down);
 		}
 
 		var button = new Button("Open") { X = Pos.Center(), Y = 7 };
@@ -77,7 +78,13 @@ public class Program
 
 		window.Add(button);
 		Application.Top.Add(window);
-		Application.Run();
+		Application.Run(AlwaysTrue);
 		Application.Shutdown();
+	}
+
+	static bool AlwaysTrue(Exception e)
+	{
+		MessageBox.Query("Er", e.Message);
+		return true;
 	}
 }

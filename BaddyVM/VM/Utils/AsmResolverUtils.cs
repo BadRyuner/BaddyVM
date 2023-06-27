@@ -2,6 +2,7 @@
 using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Code.Native;
+using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Builder;
@@ -128,6 +129,7 @@ internal static class AsmResolverUtils
 	{
 		if (sig.ElementType == ElementType.Var) return false;
 		if (sig.ElementType == ElementType.SzArray) return false;
+		if (sig is ByReferenceTypeSignature || sig is PointerTypeSignature) return false;
 
 		var resolved = sig.Resolve();
         if (resolved.BaseType == null) return false;
@@ -178,7 +180,6 @@ internal static class AsmResolverUtils
 
 		i.LoadNumber(stacksize).AllocGlobalHide(ctx).Save(stack); // stack = new[stacksize]
 
-		//var datasize = ctx.layout.VMHeaderEnd + (body.LocalVariables.Count + body.Owner.Parameters.Count) * 8 + 8;
 		var datasize = map.maxsize + 16;
 
 		i.LoadNumber(datasize).AllocGlobalHide(ctx).Save(data); // data = new[datasize]
@@ -186,7 +187,7 @@ internal static class AsmResolverUtils
 		i.Load(data).LoadNumber(ctx.layout.LocalStackHeap).Sum().Load(stack).Set8(); // data[stackoffset] = stack
 
 		i.Load(data).LoadNumber(ctx.layout.InstanceId).Sum().CallHideOutsideVM(ctx, ctx.RCNext).Set8();
-		i.Load(data).LoadNumber(ctx.layout.RCResolver).Sum().Ldftn(ctx.RCResolver).Set8();
+		i.Load(data).LoadNumber(ctx.layout.RCResolver).Sum().LdftnHideOutsideVM(ctx, ctx.RCResolver).Set8();
 
 		int counter = ctx.layout.VMHeaderEnd;
 		if (!body.Owner.IsStatic)
@@ -197,9 +198,18 @@ internal static class AsmResolverUtils
 			counter += 8;
 		}
 
-		foreach(var arg in body.Owner.Parameters) // TODO: add support for structs
+		foreach(var arg in body.Owner.Parameters)
 		{
-			i.Load(data).LoadNumber(counter).Sum().Load(arg).Set8(); // data[argoffset] = arg
+			i.Load(data).LoadNumber(counter).Sum();
+
+			if (arg.ParameterType.IsStruct()) 
+				i.LoadRef(arg)
+				.LoadNumber((int)arg.ParameterType.GetImpliedMemoryLayout(false).Size)
+				.CallHideOutsideVM(ctx, ctx.Allocator);
+			else 
+				i.Load(arg);
+
+			i.Set8(); // data[argoffset] = arg
 			counter += 8;
 		}
 

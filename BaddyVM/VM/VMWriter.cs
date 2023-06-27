@@ -237,7 +237,7 @@ internal ref struct VMWriter
 					buffer.Short((short)c[i]);
 		}
 		buffer.Short(0); // \0
-		RegisterHandle();
+		//RegisterHandle();
 	}
 
 	// TODO: add support for structs (unbox them and copy)
@@ -279,8 +279,8 @@ internal ref struct VMWriter
 	internal void CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(ushort typeIdx, bool isStatic)
 	{
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateForPointer());
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateCtor());
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateInternalAlloc());
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateStaticCtor());
 		buffer.Code(ctx, VMCodes.CreateDelegate);
 		RegisterHandle();
 	}

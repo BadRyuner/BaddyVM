@@ -12,6 +12,9 @@ internal class Program
 			//m.IsPublic && 
 			IsStaticConstructor(m) &&
 			m.CilMethodBody != null);
+#if DEBUG
+		BaddyVM.VM.Protections.AntiDebug.ForceDisable = true;
+#endif
 		vm.Virtualize(methods);
 		vm.Save("D:\\Test\\Crackme.dll");
 	}

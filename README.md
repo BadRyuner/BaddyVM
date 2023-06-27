@@ -7,8 +7,9 @@ Good for crackme obfuscation to show how good you are.
 
 # How well does it work?
 Can add two times two and coolly call a virtual method that no one will know about it. (Using Washi theory) (It won't work with interfaces, coreclr will fall)
-It cant eat methods that returns ValueTypes larger than 8 bytes.
+
 Not all opcodes work correctly. 
+
 _*Made for fun.*_
 
 # How much slower will the code run?

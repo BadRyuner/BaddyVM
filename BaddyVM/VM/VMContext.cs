@@ -81,6 +81,8 @@ internal class VMContext
 
 		if (core.ApplyProtections)
 			AntiDebug.Register(this);
+
+		Intrinsics.IntrinsicsFactory.Init(this);
 	}
 
 	private void CreateAllocator()
@@ -326,14 +328,24 @@ internal class VMContext
 		return res;
 	}
 
+	private ushort _DIA = ushort.MaxValue;
+	internal ushort GetDelegateInternalAlloc()
+	{
+		if (_DIA != ushort.MaxValue)
+			return _DIA;
+		return _DIA = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
+			typeof(Delegate).GetMethod("InternalAlloc",
+				System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)));
+	}
+
 	private ushort _DFP = ushort.MaxValue;
 	internal ushort GetDelegateForPointer()
 	{
 		if (_DFP != ushort.MaxValue)
 			return _DFP;
 		return _DFP = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
-			typeof(Marshal).GetMethod("GetDelegateForFunctionPointer",
-				System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public, 
+			typeof(Marshal).GetMethod("GetDelegateForFunctionPointerInternal",
+				System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, 
 				new[] { typeof(IntPtr), typeof(Type) })));
 	}
 
@@ -344,6 +356,17 @@ internal class VMContext
 			return _DC;
 		return _DC = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(MulticastDelegate).GetMethod("CtorClosed",
+				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+				new[] { typeof(object), typeof(IntPtr) })));
+	}
+
+	private ushort _DSC = ushort.MaxValue;
+	internal ushort GetDelegateStaticCtor()
+	{
+		if (_DSC != ushort.MaxValue)
+			return _DSC;
+		return _DSC = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
+			typeof(MulticastDelegate).GetMethod("CtorClosedStatic",
 				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
 				new[] { typeof(object), typeof(IntPtr) })));
 	}

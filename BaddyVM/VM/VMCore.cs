@@ -219,20 +219,27 @@ internal class VMCore
 				case CilCode.Ldarg:
 					{
 						var p = current.GetParameter(md.Parameters);
-						var isStruct = p.ParameterType.IsStruct();
-						if (p.Index == -1)
-							isStruct = false;
-						w.LoadLocal(map.Get(p), isStruct); break;
+						w.LoadLocal(map.Get(p), false); break;
 					}
 
 				case CilCode.Ldarga:
-				case CilCode.Ldarga_S: w.LoadLocalRef(map.Get(current.GetLocalVariable(md.CilMethodBody.LocalVariables))); break;
+				case CilCode.Ldarga_S:
+					{
+						var p = current.GetParameter(md.Parameters);
+						var isStruct = p.ParameterType.IsStruct();
+						if (p.Index == -1)
+							isStruct = false;
+						if (isStruct)
+							w.LoadLocal(map.Get(p), false); // yeaaaaaah, shitcode
+						else
+							w.LoadLocalRef(map.Get(p)); break;
+					}
 
 				case CilCode.Starg_S:
 				case CilCode.Starg:
 					{
 						var param = current.GetParameter(md.Parameters);
-						w.StoreLocal(map.Get(param), param.ParameterType.IsStruct(), (ushort)param.ParameterType.GetImpliedMemoryLayout(false).Size); break;
+						w.StoreLocal(map.Get(param), param.ParameterType.IsStruct(), 8 /* (ushort)param.ParameterType.GetImpliedMemoryLayout(false).Size */); break;
 					}
 
 				case CilCode.Ldloc:
@@ -300,12 +307,15 @@ internal class VMCore
 				case CilCode.Call:
 					{
 						var method = (IMethodDescriptor)current.Operand;
+						var replace = Intrinsics.IntrinsicsFactory.Get(method);
+						if (replace != null)
+							method = replace;
 						var isgeneric = current.Operand is SerializedMemberReference smr;
 						if (!isgeneric) smr = null;
 						else smr = (SerializedMemberReference)current.Operand; // meh, csharp
 
 						var sig = isgeneric ? (MethodSignature)smr.Signature : method.Signature;
-						var idx = context.Transform((MetadataMember)current.Operand);
+						var idx = context.Transform((MetadataMember)method);
 						var pcount = (byte)sig.GetTotalParameterCount();
 						var rets = method.Signature.ReturnsValue;
 						if (!method.Signature.ReturnType.IsStruct())
