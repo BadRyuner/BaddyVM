@@ -17,6 +17,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Echo.DataFlow", "..\brvm\Ec
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Echo.Platforms.AsmResolver", "..\brvm\Echo\src\Platforms\Echo.Platforms.AsmResolver\Echo.Platforms.AsmResolver.csproj", "{FA8C1E46-2DCC-433B-B394-7AD6D33F3908}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFormsApp1", "WinFormsApp1\WinFormsApp1.csproj", "{815A6149-E234-4280-AA9A-CFFF2328D8FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfApp1", "WpfApp1\WpfApp1.csproj", "{5FF4F052-A8A5-4AB7-B97A-499E1F16F3F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,14 @@ Global
 		{FA8C1E46-2DCC-433B-B394-7AD6D33F3908}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FA8C1E46-2DCC-433B-B394-7AD6D33F3908}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FA8C1E46-2DCC-433B-B394-7AD6D33F3908}.Release|Any CPU.Build.0 = Release|Any CPU
+		{815A6149-E234-4280-AA9A-CFFF2328D8FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{815A6149-E234-4280-AA9A-CFFF2328D8FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{815A6149-E234-4280-AA9A-CFFF2328D8FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{815A6149-E234-4280-AA9A-CFFF2328D8FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FF4F052-A8A5-4AB7-B97A-499E1F16F3F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FF4F052-A8A5-4AB7-B97A-499E1F16F3F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FF4F052-A8A5-4AB7-B97A-499E1F16F3F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FF4F052-A8A5-4AB7-B97A-499E1F16F3F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

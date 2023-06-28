@@ -149,6 +149,11 @@ internal class VMContext
 		i.Add(CilInstruction.CreateLdcI4(0));
 		i.Add(CilOpCodes.Stsfld, MemPos);
 
+		var rmh = typeof(RuntimeMethodHandle);
+		var irmi = typeof(RuntimeMethodHandle).Assembly.GetType("System.IRuntimeMethodInfo");
+		var getslot = core.module.DefaultImporter.ImportMethod(rmh.GetMethod("GetSlot", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, new[] { irmi }));
+		var methodfromhandle = core.module.DefaultImporter.ImportMethod(typeof(System.Reflection.MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) }));
+
 		for (int x = 0; x < VMTableContent.Count; x++)
 		{
 			var target = VMTableContent[x];
@@ -191,7 +196,7 @@ internal class VMContext
 				if (!resolved.IsPublic)
 					ignorechecks.Add(resolved.Module.Name);
 
-				if (!md.Resolve().IsAbstract)
+				if (!resolved.IsVirtual || resolved.DeclaringType.IsValueType)
 				{
 					if (md.IsImportedInModule(core.module))
 						i.Add(CilOpCodes.Ldftn, md); // +_+
@@ -199,7 +204,14 @@ internal class VMContext
 						i.Add(CilOpCodes.Ldftn, core.module.DefaultImporter.ImportMethod(md));
 				}
 				else
-					i.Add(CilOpCodes.Ldc_I4_0);
+				{
+					if (md.IsImportedInModule(core.module))
+						i.Add(CilOpCodes.Ldtoken, md); // +_+
+					else
+						i.Add(CilOpCodes.Ldtoken, core.module.DefaultImporter.ImportMethod(md));
+					i.Add(CilOpCodes.Call, methodfromhandle);
+					i.Add(CilOpCodes.Call, getslot);
+				}
 			}
 			else if (target is ITypeDefOrRef td)
 			{

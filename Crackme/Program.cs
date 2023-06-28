@@ -2,10 +2,57 @@
 
 namespace Crackme;
 
-public class Program
+public unsafe class Program
 {
+	public class A
+	{
+		public virtual void a1() => Console.WriteLine(1);
+		public virtual void a2() => Console.WriteLine(2);
+		public virtual void a3() => Console.WriteLine(3);
+		public virtual void a4() => Console.WriteLine(4);
+		public virtual void a5() => Console.WriteLine(5);
+		public virtual void a6() => Console.WriteLine(6);
+		public virtual void a7() => Console.WriteLine(7);
+		public virtual void a8() => Console.WriteLine(8);
+		public virtual void a9() => Console.WriteLine(9);
+		public virtual void a10() => Console.WriteLine(10);
+		public virtual void a11() => Console.WriteLine(11);
+		public virtual void a12() => Console.WriteLine(12);
+		public virtual void a13() => Console.WriteLine(13);
+	}
+
+	public class B : A
+	{
+		public override void a10() => Console.WriteLine(100);
+		public override void a11() => Console.WriteLine(110);
+		public override void a12() => Console.WriteLine(120);
+		public new void a13() => Console.WriteLine(1113);
+	}
+
+	public static A G() => new B();
+
+	static void Test()
+	{
+		var a = G();
+		a.a1();
+		a.a2();
+		a.a3();
+		a.a4();
+		a.a5();
+		a.a6();
+		a.a7();
+		a.a8();
+		a.a9();
+		a.a10();
+		a.a11();
+		a.a12();
+		a.a13();
+		((B)a).a13();
+	}
+	
 	private static void Main(string[] args)
 	{
+		//Test();
 		Start();
 	}
 

@@ -127,7 +127,7 @@ internal static class AsmResolverUtils
 
 	internal static bool IsStruct(this TypeSignature sig)
 	{
-		if (sig.ElementType == ElementType.Var) return false;
+		if (sig.ElementType == ElementType.Var || sig.ElementType == ElementType.MVar) return false;
 		if (sig.ElementType == ElementType.SzArray) return false;
 		if (sig is ByReferenceTypeSignature || sig is PointerTypeSignature) return false;
 

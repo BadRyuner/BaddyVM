@@ -178,13 +178,31 @@ internal class Objects
 	private static void GetVirtFunc(VMContext ctx)
 	{
 		var i = ctx.AllocManagedMethod("GetVirtFunc").CilMethodBody.Instructions
-		.NewLocal(ctx, out var res).NewLocal(ctx, out var buf);
-		i.DecodeCode(2).Save(res)
-		.PeekMem(ctx, res, res)
-		.Load(res).DerefI()										// mov rdi, [rsi]
-		.LoadNumber(0x40).DecodeCode(2).Sum().Sum().DerefI()	// mov rbx, [rdi+0x40+chunk]
-		.DecodeCode(2).Sum().DerefI()							// mov rax, qword [rbx+FuncOffset]
-		.Save(res).PushMem(ctx, res, buf);
+		.NewLocal(ctx, out var obj).NewLocal(ctx, out var slot);
+		var offset = obj;
+
+		var rmh = typeof(RuntimeMethodHandle);
+		var rth = typeof(RuntimeTypeHandle);
+		var _gma = rth.GetMethod("GetMethodAt", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+		var _gmaret = ctx.core.module.DefaultImporter.ImportTypeSignature(_gma.ReturnType);
+		var getmethodat = ctx.core.module.DefaultImporter.ImportMethod(_gma);
+		var getfnptr = ctx.core.module.DefaultImporter.ImportMethod(rmh.GetMethod("GetFunctionPointer", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+		var gettype = ctx.core.module.DefaultImporter.ImportMethod(typeof(object).GetMethod("GetType"));
+
+		i.PopMem(ctx, slot).Save(slot);
+		i.DecodeCode(2).Save(offset)
+		.PeekMem(ctx, offset, obj);
+
+		var method = slot;
+		var handle = method;
+		//i.NewLocal(_gmaret, out var handle);
+		var type = obj;
+		i.Load(obj).Call(gettype).Save(type).Load(type).Load(slot).CallHide(ctx, getmethodat).Save(handle);
+		//i.Load(obj).Call(gettype).Load(slot).Call(getmethodat).Save(handle);
+		i.Load(handle).CallHide(ctx, getfnptr).Save(method);
+		//i.Load(handle).Call(getfnptr).Save(method);
+		var buf = obj;
+		i.PushMem(ctx, method, buf);
 		
 		i.RegisterHandler(ctx, VMCodes.GetVirtFunc);
 	}

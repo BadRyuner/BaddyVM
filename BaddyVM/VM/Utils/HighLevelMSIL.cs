@@ -488,7 +488,10 @@ internal static class HighLevelMSIL
 
 	internal static CilInstructionCollection AllocGlobal(this CilInstructionCollection i, VMContext ctx)
 	{
-		i.Add(CilOpCodes.Call, ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
+		if (allocGlobal == null)
+			allocGlobal = ctx.core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) }));
+
+		i.Add(CilOpCodes.Call, allocGlobal);
 		return i;
 	}
 

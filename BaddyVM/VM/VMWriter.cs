@@ -210,9 +210,10 @@ internal ref struct VMWriter
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
-	internal void CallVirt((ushort chunk, ushort offset) offset, byte argscount, bool ret)
+	internal void CallVirt(ushort methodIdx, byte argscount, bool ret)
 	{
-		buffer.Code(ctx, VMCodes.GetVirtFunc).Short((short)((argscount-1)*8)).Ushort((ushort)(offset.chunk * 8)).Ushort(offset.offset).Code(ctx, VMCodes.CallAddress).Byte(argscount);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(methodIdx);
+		buffer.Code(ctx, VMCodes.GetVirtFunc).Short((short)((argscount-1)*8)).Code(ctx, VMCodes.CallAddress).Byte(argscount);
 		if (!ret)
 			Code(VMCodes.Pop);
 		else
@@ -451,6 +452,7 @@ internal ref struct VMWriter
 
 	private void RegisterHandle()
 	{
+		return;
 		buffer.Code(ctx, VMCodes.Dup);
 		buffer.Code(ctx, VMCodes.PushInstanceID);
 		buffer.Code(ctx, VMCodes.SwapStack);

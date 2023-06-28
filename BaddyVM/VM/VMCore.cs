@@ -357,7 +357,7 @@ internal class VMCore
 								w.CallInterface(context.TransformCallInterface(func), false);
 						}
 						else
-							w.CallVirt(VirtualDispatcher.GetOffset(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
+							w.CallVirt(context.Transform(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
 						break;
 					}
 
