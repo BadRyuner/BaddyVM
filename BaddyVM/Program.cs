@@ -8,7 +8,7 @@ internal class Program
 	{
 		string save = null;
 		string target = null;
-		var what = 0;
+		var what = 1;
 		if (what == 0)
 		{
 			target = "D:\\Work\\BaddyVM\\Crackme\\bin\\Debug\\net6.0\\Crackme.dll"; 
@@ -28,8 +28,7 @@ internal class Program
 		var vm = new VMCore(target, applyProtections: true);
 		var methods = vm.module.GetAllTypes().SelectMany(t => t.Methods).Where(m => /*and this*/ 
 			//m.IsPublic &&
-			//!m.IsConstructor &&
-			IsStaticConstructor(m) &&
+			!m.IsConstructor &&
 			m.CilMethodBody != null);
 #if DEBUG
 		BaddyVM.VM.Protections.AntiDebug.ForceDisable = true;
