@@ -145,6 +145,9 @@ internal ref struct VMWriter
 	internal void DerefI2() => buffer.Code(ctx, VMCodes.DerefI2);
 	internal void DerefI1() => buffer.Code(ctx, VMCodes.DerefI1);
 
+	internal void DerefU4() => buffer.Code(ctx, VMCodes.DerefU4);
+	internal void DerefU2() => buffer.Code(ctx, VMCodes.DerefU2);
+
 	internal void SetSized(ushort size) => buffer.Code(ctx, VMCodes.SetSized).Ushort(size);
 	internal void SetI() => buffer.Code(ctx, VMCodes.SetI);
 	internal void SetI4() => buffer.Code(ctx, VMCodes.SetI4);
@@ -184,14 +187,10 @@ internal ref struct VMWriter
 	internal void Ldlen() => buffer.Code(ctx, VMCodes.Push4).Int(8).Code(ctx, VMCodes.Add).Code(ctx, VMCodes.DerefI);
 	#endregion
 
-	internal void Call(ushort idx, byte argscount, bool ret)
+	internal void Call(ushort idx, byte argscount, bool ret, byte floatMask = 0)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.CallAddress).Byte(argscount);
-		if (!ret)
-			Code(VMCodes.Pop);
-		else
-			RegisterHandle();
-		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		Calli(argscount, ret, floatMask);
 	}
 
 	internal void SafeCall(ushort idx)
@@ -200,29 +199,25 @@ internal ref struct VMWriter
 		//ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
-	internal void Calli(byte argscount, bool ret)
+	internal void Calli(byte argscount, bool ret, byte floatMask = 0)
 	{
-		buffer.Code(ctx, VMCodes.CallAddress).Byte(argscount);
+		buffer.Code(ctx, VMCodes.CallAddress).Byte(argscount).Byte(floatMask);
 		if (!ret)
 			Code(VMCodes.Pop);
 		else
 			RegisterHandle();
-		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
+		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount & sbyte.MaxValue);
 	}
 
-	internal void CallVirt(ushort methodIdx, byte argscount, bool ret)
+	internal void CallVirt(ushort methodIdx, byte argscount, bool ret, byte floatByte = 0)
 	{
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(methodIdx);
-		buffer.Code(ctx, VMCodes.GetVirtFunc).Short((short)((argscount-1)*8)).Code(ctx, VMCodes.CallAddress).Byte(argscount);
-		if (!ret)
-			Code(VMCodes.Pop);
-		else
-			RegisterHandle();
-		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
+		buffer.Code(ctx, VMCodes.GetVirtFunc).Short((short)((argscount-1)*8));
+		Calli(argscount, ret, floatByte);
 	}
 
 	internal void CallInterface(ushort idx, bool isconstrained)
-	{
+	{ // TODO: adds arg for floats
 		buffer.Code(ctx, VMCodes.CallInterface).Ushort(idx).Byte(isconstrained ? (byte)1 : (byte)0);
 	}
 
@@ -241,17 +236,26 @@ internal ref struct VMWriter
 		//RegisterHandle();
 	}
 
-	// TODO: add support for structs (unbox them and copy)
-	internal void NewObj(ushort type, ushort constructor, byte args)
+	internal void NewObj(ushort type, ushort constructor, byte args, bool isValueType, uint size, byte floatMask = 0)
 	{
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(type);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject)); 
-		buffer.Code(ctx, VMCodes.CallAddress).Byte(1);
-		buffer.Code(ctx, VMCodes.Eat); 
+		Calli(1, true);
+		if (isValueType)
+		{
+			buffer.Code(ctx, VMCodes.Push4).Int(8).Code(ctx, VMCodes.Add);
+		}
+		buffer.Code(ctx, VMCodes.Eat);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(constructor); 
-		buffer.Code(ctx, VMCodes.CallAddress).Byte((byte)(args ^ 0b1000_0000));
-		buffer.Code(ctx, VMCodes.Pop); 
+		//buffer.Code(ctx, CallAdr).Byte((byte)(args ^ 0b1000_0000));
+		Calli((byte)(args ^ 0b1000_0000), false, floatMask);
 		buffer.Code(ctx, VMCodes.Poop);
+		switch(size) // all 2/4/8 bytes sized structs cant be passed as ptr
+		{
+			case 2: DerefU2(); break;
+			case 4: DerefU4(); break;
+			case 8: DerefI8(); break;
+		}
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, args);
 		RegisterHandle();
 	}
@@ -263,13 +267,13 @@ internal ref struct VMWriter
 		/*
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetObjStub(size));
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject));
-		buffer.Code(ctx, VMCodes.CallAddress).Byte(1);
+		buffer.Code(ctx, CallAdr).Byte(1);
 		buffer.Code(ctx, VMCodes.Eat);
 		buffer.Code(ctx, VMCodes.Poop);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
 		buffer.Code(ctx, VMCodes.SetI);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(constructor);
-		buffer.Code(ctx, VMCodes.CallAddress).Byte((byte)(args ^ 0b1000_0000));
+		buffer.Code(ctx, CallAdr).Byte((byte)(args ^ 0b1000_0000));
 		buffer.Code(ctx, VMCodes.Pop);
 		buffer.Code(ctx, VMCodes.Poop);
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, args);
@@ -458,8 +462,8 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.SwapStack);
 		buffer.Code(ctx, VMCodes.Push4).Int(0);
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.RCResolver));
-		buffer.Code(ctx, VMCodes.CallAddress).Byte(3);
-		buffer.Code(ctx, VMCodes.Pop);
+		//buffer.Code(ctx, CallAdr).Byte(3);
+		Calli(3, false);
 	}
 
 	internal byte[] Finish()

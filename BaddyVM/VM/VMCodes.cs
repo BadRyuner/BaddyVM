@@ -27,7 +27,7 @@ internal enum VMCodes : byte
 
 	Xor, Or, Not, Neg, And, Shl, Shr, Shr_Un,
 
-	DerefI, DerefI8, DerefI4, DerefI2, DerefI1, // DerefR4, DerefR8,
+	DerefI, DerefI8, DerefI4, DerefI2, DerefI1, DerefU4, DerefU2, // DerefR4, DerefR8,
 	SetI, SetI4, SetI2, SetI1, SetSized,
 
 	Conv,

@@ -27,21 +27,26 @@ internal static class Main
 		i.GetInstanceID(ctx).LoadNumber(0).LoadNumber(1).GetRCResovler(ctx).Calli(ctx, 3, false); // flush all gchandles
 
 		i.CheckIfNoRet(ctx).IfBranch(
-			() => i.LoadNumber(-1).LoadLocalStackHeap(ctx).FreeGlobalHide(ctx).Arg1().FreeGlobalHide(ctx).Ret() /*if no ret*/, 
+			() => /*if no ret*/
+			{
+				i.LoadNumber(-1)
+				//.LoadLocalStackHeap(ctx).FreeGlobalHide(ctx).Arg1().FreeGlobalHide(ctx)
+				.Ret();
+			},
 			() => /*if ret*/
 			{
 				i.PopMem(ctx, buf); // get result
 				i.DecodeCode(2).Save(buf); // get size
 				i.Load(buf).LoadNumber(0).Compare().IfBranch(() =>
 				{
-					i.LoadLocalStackHeap(ctx).FreeGlobalHide(ctx).Arg1().FreeGlobalHide(ctx); // free vm local method instance
+					//.LoadLocalStackHeap(ctx).FreeGlobalHide(ctx).Arg1().FreeGlobalHide(ctx); // free vm local method instance
 					i.Ret(); // return 1/2/4/8 byte-sized values
 				}, 
 				() =>
 				{
 					i.Load(buf)
 					.MoveToGlobalMem(ctx) // move to global mem
-					.LoadLocalStackHeap(ctx).FreeGlobalHide(ctx).Arg1().FreeGlobalHide(ctx) // free vm local method instance
+					//.LoadLocalStackHeap(ctx).FreeGlobalHide(ctx).Arg1().FreeGlobalHide(ctx) // free vm local method instance
 					.Ret(); // return ptr to global mem
 				});
 			})

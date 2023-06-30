@@ -310,4 +310,33 @@ internal static class AsmResolverUtils
 		ctx.VMType.Methods.Add(method);
 		return method;
 	}
+
+	internal static byte CalcFloatByte(this IMethodDescriptor md)
+	{
+		int res = 0;
+		var p = md.Signature.ParameterTypes;
+
+		if (p.Count > 0)
+			res |= p[0].ElementType.IsFloat();
+		if (p.Count > 1)
+			res |= p[1].ElementType.IsFloat() << 1;
+		if (p.Count > 2)
+			res |= p[2].ElementType.IsFloat() << 2;
+		if (p.Count > 3)
+			res |= p[3].ElementType.IsFloat() << 3;
+
+		return (byte)res;
+	}
+
+	private static byte IsFloat(this ElementType t)
+	{
+		switch(t)
+		{
+			case ElementType.R4:
+			case ElementType.R8:
+				return 1;
+			default:
+				return 0;
+		}
+	}
 }

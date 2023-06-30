@@ -303,7 +303,7 @@ internal class VMCore
 				case CilCode.Ldftn: w.LoadVMTable(context.Transform((MetadataMember)current.Operand)); break;
 
 				case CilCode.Calli: w.Calli((byte)((IMethodDescriptor)current.Operand).Signature.GetTotalParameterCount(),
-					((IMethodDescriptor)current.Operand).Signature.ReturnsValue); break;
+					((IMethodDescriptor)current.Operand).Signature.ReturnsValue, ((IMethodDescriptor)current.Operand).CalcFloatByte()); break;
 				case CilCode.Call:
 					{
 						var method = (IMethodDescriptor)current.Operand;
@@ -319,7 +319,7 @@ internal class VMCore
 						var pcount = (byte)sig.GetTotalParameterCount();
 						var rets = method.Signature.ReturnsValue;
 						if (!method.Signature.ReturnType.IsStruct())
-							w.Call(idx, pcount, rets);
+							w.Call(idx, pcount, rets, method.CalcFloatByte());
 						else
 							w.SafeCall(idx);
 						break;
@@ -351,13 +351,13 @@ internal class VMCore
 									//resolvedFunc = (MetadataMember)module.DefaultImporter.ImportMethod(resolvedType.Methods.First(m => m.Name == func.Name && comparer.Equals(m.Signature, func.Signature)));
 									resolvedFunc = type.CreateMemberReference(func.Name, func.Signature);
 								}
-								w.Call(context.Transform(resolvedFunc), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
+								w.Call(context.Transform(resolvedFunc), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue, func.CalcFloatByte());
 							}
 							else
 								w.CallInterface(context.TransformCallInterface(func), false);
 						}
 						else
-							w.CallVirt(context.Transform(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue);
+							w.CallVirt(context.Transform(func), (byte)func.Signature.GetTotalParameterCount(), func.Signature.ReturnsValue, func.CalcFloatByte());
 						break;
 					}
 
@@ -373,17 +373,11 @@ internal class VMCore
 								i++;
 								w.LoadLocalRef(map.Get(list[i].GetLocalVariable(md.CilMethodBody.LocalVariables)));
 								w.PushBack((ushort)(args-1));
-								w.Call(context.Transform((MetadataMember)ctor), args, false);
+								w.Call(context.Transform((MetadataMember)ctor), args, false, ctor.CalcFloatByte());
 								break;
 							}
 							throw new NotSupportedException("newobj byreflike type");
 						}
-						//else if (current.Operand is SerializedMemberReference smr)
-						//{
-						//	var ctor = smr;
-						//	var parent = (MetadataMember)ctor.DeclaringType;
-						//	w.NewObj(context.Transform(parent), context.Transform(ctor), (byte)((MethodSignature)ctor.Signature).GetTotalParameterCount());
-						//}
 						else
 						{
 							var ctor = (IMethodDefOrRef)current.Operand;
@@ -394,9 +388,15 @@ internal class VMCore
 								break;
 							}
 							var parent = (MetadataMember)ctor.DeclaringType;
+							var size = ((ITypeDescriptor)parent).ToTypeSignature().IsStruct() ? 
+								((ITypeDescriptor)parent).GetImpliedMemoryLayout(false).Size
+								: 0;
 							w.NewObj(context.Transform(parent),
 								context.Transform((MetadataMember)ctor),
-								(byte)((MethodSignature)ctor.Signature).GetTotalParameterCount());
+								(byte)((MethodSignature)ctor.Signature).GetTotalParameterCount(),
+								((ITypeDescriptor)parent).IsValueType,
+								size,
+								(byte)(ctor.CalcFloatByte() << 1));
 						}
 						break;
 					}

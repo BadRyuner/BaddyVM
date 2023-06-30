@@ -13,6 +13,8 @@ internal class _Utils
 		DerefI4(ctx);
 		DerefI2(ctx);
 		DerefI1(ctx);
+		DerefU4(ctx);
+		DerefU2(ctx);
 		SetI(ctx);
 		SetI1(ctx);
 		SetI2(ctx);
@@ -182,6 +184,16 @@ internal class _Utils
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
 		.PopMem(ctx, buf).DerefI1().Save(res).PushMem(ctx, res, buf)
 		.RegisterHandler(ctx, VMCodes.DerefI1);
+
+	private static void DerefU4(VMContext ctx) => ctx.AllocManagedMethod("DerefU4").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
+		.PopMem(ctx, buf).DerefU4().Save(res).PushMem(ctx, res, buf)
+		.RegisterHandler(ctx, VMCodes.DerefU4);
+
+	private static void DerefU2(VMContext ctx) => ctx.AllocManagedMethod("DerefU2").CilMethodBody.Instructions
+		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
+		.PopMem(ctx, buf).DerefU2().Save(res).PushMem(ctx, res, buf)
+		.RegisterHandler(ctx, VMCodes.DerefU2);
 
 	private static void SetSized(VMContext ctx)
 	{

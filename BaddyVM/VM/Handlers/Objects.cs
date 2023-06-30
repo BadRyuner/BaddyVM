@@ -5,6 +5,7 @@ using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
+using Iced.Intel;
 
 namespace BaddyVM.VM.Handlers;
 internal class Objects
@@ -27,9 +28,10 @@ internal class Objects
 		i.NewLocal(ctx, out var adr)
 		.NewLocal(ctx, out var argscount)
 		.NewLocal(ctx, out var buf)
+		.NewLocal(ctx, out var floatByte)
 		.NewLocal(ctx, VMTypes.I1, out var isnewobj)
 		.PopMem(ctx, adr).Save(adr)
-		.DecodeCode(1).Save(argscount);
+		.DecodeCode(1).Save(argscount).DecodeCode(1).Save(floatByte);
 		i.LoadNumber(0).Save(isnewobj);
 		i.Load(argscount).LoadNumber(0b1000_0000).And().LoadNumber(0b1000_0000).Compare()
 			.IfTrue(() =>
@@ -47,13 +49,6 @@ internal class Objects
 		{
 			i.NewLocal(ctx, out locals[x]);
 		}
-		/*
-		for(int x = 0; x < locals.Length; x++)
-		{
-			i.NewLocal(ctx, out locals[x]);
-			i.Load(argscount).LoadNumber(x+1).LessOrEq().IfTrue(() => i.PopMem(ctx, buf).Save(locals[x]));
-		}
-		*/
 
 		for (int x = 0; x < locals.Length; x++)
 		{
@@ -76,6 +71,57 @@ internal class Objects
 				}
 			});
 		}
+
+		var skipFloat = new CilInstruction(CilOpCodes.Nop);
+
+		i.Load(floatByte).LoadNumber(0).Compare().IfTrue(() => i.Br(skipFloat));
+
+		var setFloatSig = MethodSignature.CreateStatic(ctx.core.module.CorLibTypeFactory.Void, ctx.PTR);
+		var setFloat = ctx.AllocNativeMethod("SetXmm0", setFloatSig);
+		var w = HighLevelIced.Get(ctx);
+		w.asm.movq(AssemblerRegisters.xmm0, w.Arg1_64);
+		w.Return();
+		setFloat.Code = w.Compile();
+
+		if (locals.Length >= 1)
+		{
+			i.Load(floatByte).CheckBit(0b1).IfTrue(() => i.Load(locals[0]).Call(setFloat.Owner));
+		}
+
+		if (locals.Length >= 2)
+		{
+			setFloat = ctx.AllocNativeMethod("SetXmm1", setFloatSig);
+			w = HighLevelIced.Get(ctx);
+			w.asm.movq(AssemblerRegisters.xmm1, w.Arg1_64);
+			w.Return();
+			setFloat.Code = w.Compile();
+
+			i.Load(floatByte).CheckBit(0b10).IfTrue(() => i.Load(locals[1]).Call(setFloat.Owner));
+		}
+
+		if (locals.Length >= 3)
+		{
+			setFloat = ctx.AllocNativeMethod("SetXmm2", setFloatSig);
+			w = HighLevelIced.Get(ctx);
+			w.asm.movq(AssemblerRegisters.xmm2, w.Arg1_64);
+			w.Return();
+			setFloat.Code = w.Compile();
+
+			i.Load(floatByte).CheckBit(0b100).IfTrue(() => i.Load(locals[2]).Call(setFloat.Owner));
+		}
+
+		if (locals.Length >= 4)
+		{
+			setFloat = ctx.AllocNativeMethod("SetXmm3", setFloatSig);
+			w = HighLevelIced.Get(ctx);
+			w.asm.movq(AssemblerRegisters.xmm3, w.Arg1_64);
+			w.Return();
+			setFloat.Code = w.Compile();
+
+			i.Load(floatByte).CheckBit(0b1000).IfTrue(() => i.Load(locals[3]).Call(setFloat.Owner));
+		}
+
+		i.Add(skipFloat);
 
 		var end = new CilInstruction(CilOpCodes.Nop);
 		var endlabel = end.CreateLabel();

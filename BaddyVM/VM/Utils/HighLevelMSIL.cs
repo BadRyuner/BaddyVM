@@ -480,6 +480,24 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	internal static CilInstructionCollection DerefU4(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Ldind_U4);
+		return i;
+	}
+
+	internal static CilInstructionCollection DerefU2(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Ldind_U2);
+		return i;
+	}
+
+	internal static CilInstructionCollection DerefU1(this CilInstructionCollection i)
+	{
+		i.Add(CilOpCodes.Ldind_U1);
+		return i;
+	}
+
 	internal static CilInstructionCollection Stackalloc(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Localloc);
@@ -830,6 +848,11 @@ internal static class HighLevelMSIL
 	internal static void RegisterHandlerNoJmp(this CilInstructionCollection i, VMContext ctx, VMCodes code)
 	{
 		ctx.Handlers.Add(ctx.EncryptVMCode(code), i.Owner.Owner);
+	}
+
+	internal static CilInstructionCollection CheckBit(this CilInstructionCollection i, int bit)
+	{
+		return i.LoadNumber(bit).And().LoadNumber(bit).Compare();
 	}
 
 	internal static CilInstructionCollection Compare(this CilInstructionCollection i)
