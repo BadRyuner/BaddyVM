@@ -10,7 +10,7 @@ internal static partial class IntrinsicsFactory
 
 	static IntrinsicsFactory()
 	{
-		FastAndUnsafeEmptyArray.Register();
+		//FastAndUnsafeEmptyArray.Register();
 	}
 
 	internal static void Init(VMContext context) => ctx = context; 

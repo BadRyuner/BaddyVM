@@ -12,6 +12,7 @@ internal class Objects
 {
 	internal static void Handle(VMContext ctx)
 	{
+		CallManaged(ctx);
 		CallByAddress(ctx);
 		SafeCall(ctx);
 		AllocString(ctx);
@@ -20,6 +21,64 @@ internal class Objects
 		//NewObjUnsafe(ctx);
 		Box(ctx);
 		Unbox(ctx);
+	}
+
+	// stack: [method, args]
+	// bytes: [argsCount, isRet]
+	private static void CallManaged(VMContext ctx) // safer
+	{
+		if (ctx.IsNet6()) return;
+
+		var i = ctx.AllocManagedMethod("CallManaged").CilMethodBody.Instructions;
+		i.NewLocal(ctx, out var buffer).NewLocal(ctx, out var buf).NewLocal(ctx, out var buf2)
+		 .NewLocal(ctx, out var args).NewLocal(ctx, out var argsPtr)
+		 .NewLocal(ctx, out var sig).NewLocal(ctx, out var flags);
+		i.DecodeCode(2).Save(args);
+		i.DecodeCode(1).Save(flags);
+
+		i.PopMem(ctx, sig).Save(sig);
+
+		var exit = new CilInstruction(CilOpCodes.Nop);
+		
+		i.Load(args).LoadNumber(0).Compare().IfBranch(() => i.Br(exit), () => i.Load(args).Stackalloc().Save(argsPtr)); // no exceptions when args == 0
+		
+		i.While(() =>
+		{
+			i.Load(args).LoadNumber(0).Compare().IfTrue(() => i.Br(exit));
+			i.Dec(args, 8);
+			i.DecodeCode(1).LoadNumber(0).Compare().IfBranch(() => i.Load(argsPtr).Load(args).Sum().PopMemAsRef(ctx, buffer).Set8(), // argsPtr[args] = *stack--
+				() =>
+				{
+					var pStruct = buffer;
+					i.DecodeCode(2).Dup().Save(buf).Stackalloc().Save(pStruct);
+					//i.Load(pStruct).LoadNumber(8).Sum().PopMem(ctx, buf2).Load(buf);
+					i.Load(pStruct).PopMem(ctx, buf2).Load(buf);
+					i.CallHide(ctx, ctx.MemCpy);
+					i.Load(argsPtr).Load(args).Sum().Load(pStruct).Set8();
+				});
+		});
+		
+		i.Add(exit);
+
+		// NET6.0:	 object? target, in Span<object?> arguments, Signature sig, bool constructor, bool wrapExceptions
+		// Net6.0:	 Not Supported.
+		// NET7.0>=: object  target, void**           arguments, Signature sig, bool constructor
+		// Net7.0>=: Works good
+		var pseudoCall = ctx.core.module.DefaultImporter.ImportMethod(typeof(RuntimeMethodHandle).GetMethod("InvokeMethod", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic));
+		
+
+		i.Load(flags).CheckBit(0b10).IfBranch(() => i.PopMem(ctx, buffer), () => i.LoadNumber(0)); // target
+		i.Load(argsPtr); // arguments
+		i.Load(sig); // sig
+		i.LoadNumber(0); // constructor = false
+		i.CallHide(ctx, pseudoCall);
+
+		var result = args;
+		i.Save(result);
+		i.Load(flags).CheckBit(0b100).IfTrue(() => i.Load(result).LoadNumber(8).Sum().Save(result)); // is struct
+		i.Load(flags).CheckBit(0b1000).IfTrue(() => i.Load(result).DerefI().Save(result)); // is packed struct
+		i.Load(flags).CheckBit(0b01).IfTrue(() => i.PushMem(ctx, result, buffer)); // push return value
+		i.RegisterHandler(ctx, VMCodes.CallManaged);
 	}
 
 	private static void CallByAddress(VMContext ctx) // unsafe 
@@ -149,6 +208,15 @@ internal class Objects
 		}
 
 		i.Add(end);
+		{
+			setFloat = ctx.AllocNativeMethod("GetXmm0", MethodSignature.CreateStatic(ctx.PTR));
+			w = HighLevelIced.Get(ctx);
+			w.asm.movq(AssemblerRegisters.rax, AssemblerRegisters.xmm0);
+			w.Return();
+			setFloat.Code = w.Compile();
+			var floatRet = adr;
+			i.Load(floatByte).CheckBit(0b1_0000).IfTrue(() => i.Call(setFloat.Owner).Save(floatRet).OverrideMem(ctx, floatRet));
+		}
 		i.RegisterHandler(ctx, VMCodes.CallAddress);
 	}
 
@@ -206,16 +274,20 @@ internal class Objects
 	{
 		var i = ctx.AllocManagedMethod("AllocString").CilMethodBody.Instructions
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var length).NewLocal(ctx, out var str)
-		//.NewLocal(ctx, out var ptr)
-		.DecodeCode(4).Save(length)
-		.LoadNumber(0) // pseudo this for ctor
-		.CodePtr() // ptr
+		.DecodeCode(4).Save(length);
+
+		bool isNet6 = ctx.IsNet6();
+
+		if (isNet6) i.LoadNumber(0); // pseudo this for ctor
+		i.CodePtr() // ptr
 		.SkipCode(length)
-		.AccessToVMTable(ctx)
-		//.LoadNumber(ctx.Transform((MetadataMember)ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("CreateStringForSByteConstructor", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic))))
-		.LoadNumber(ctx.Transform((MetadataMember)ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("Ctor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, new[] { typeof(char*) }))))
-		.Sum().DerefI()
-		.Calli(ctx, 2, true).Save(str);
+		.AccessToVMTable(ctx);
+		
+		var ctor = isNet6 ? ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("Ctor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, new[] { typeof(char*) }))
+			: ctx.core.module.DefaultImporter.ImportMethod(typeof(string).GetMethod("Ctor", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, new[] { typeof(char*) }));
+
+		i.LoadNumber(ctx.Transform((MetadataMember)ctor));
+		i.Sum().DerefI().Calli(ctx, isNet6 ? 2 : 1, true).Save(str); 
 
 		i.PushMem(ctx, str, buf);
 		i.RegisterHandler(ctx, VMCodes.Ldstr);

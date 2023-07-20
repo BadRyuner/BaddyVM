@@ -49,11 +49,31 @@ public unsafe class Program
 		a.a13();
 		((B)a).a13();
 	}
+
+	static void Test2(kek k)
+	{
+		Console.WriteLine(k.a);
+		//Console.WriteLine(k.b);
+	}
+
+	//static int a = 1;
+
+	struct kek
+	{
+		public int a;
+	}
+
+	static double get() => 2.22d;
 	
 	private static void Main(string[] args)
 	{
+		//int a = 1;
+		//Test2(new kek() { a = 1 });
+		//Console.WriteLine(a);
+		//Console.WriteLine(Int64.Parse("52748"));
 		//Test();
-		Start();
+		Console.WriteLine(get());
+		//Start();
 	}
 
 	public static void Start()

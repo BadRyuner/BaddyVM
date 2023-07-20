@@ -8,21 +8,28 @@ internal class Program
 	{
 		string save = null;
 		string target = null;
-		var what = 1;
+		var what = 0;
+		string net = default;
+#if NET7_0
+		net = "7.0";
+#endif
+#if NET6_0
+		net = "6.0";
+#endif
 		if (what == 0)
 		{
-			target = "D:\\Work\\BaddyVM\\Crackme\\bin\\Debug\\net6.0\\Crackme.dll"; 
+			target = $"D:\\Work\\BaddyVM\\Crackme\\bin\\Debug\\net{net}\\Crackme.dll"; 
 			save = "D:\\Test\\Crackme.dll";
 		}
 		else if (what == 1)
         {
-			target = "D:\\Work\\BaddyVM\\WinFormsApp1\\bin\\Debug\\net6.0-windows\\WinFormsApp1.dll";
+			target = $"D:\\Work\\BaddyVM\\WinFormsApp1\\bin\\Debug\\net{net}-windows\\WinFormsApp1.dll";
 			save = "D:\\Test\\WinFormsApp1.dll";
 			BaddyVM.VM.Protections.GeneralProtections.DisableForTypes = true; // incompitable with winforms
 		}
 		else
 		{
-			target = "D:\\Work\\BaddyVM\\WpfApp1\\bin\\Debug\\net6.0-windows\\WpfApp1.dll";
+			target = $"D:\\Work\\BaddyVM\\WpfApp1\\bin\\Debug\\net{net}-windows\\WpfApp1.dll";
 			save = "D:\\Test\\WpfApp1.dll";
 		}
 		var vm = new VMCore(target, applyProtections: true);

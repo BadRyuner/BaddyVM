@@ -4,8 +4,10 @@ using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Serialized;
 using AsmResolver.DotNet.Signatures;
+using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Builder;
 using AsmResolver.PE.DotNet.Cil;
+using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Protections;
 using BaddyVM.VM.Utils;
 using Echo.ControlFlow.Blocks;
@@ -319,7 +321,18 @@ internal class VMCore
 						var pcount = (byte)sig.GetTotalParameterCount();
 						var rets = method.Signature.ReturnsValue;
 						if (!method.Signature.ReturnType.IsStruct())
-							w.Call(idx, pcount, rets, method.CalcFloatByte());
+						{
+							if (context.IsNet6() || sig.ParameterTypes.Any(t => t is ByReferenceTypeSignature || t is PointerTypeSignature) || sig.ReturnsValue) // idk how to handle ret val
+							{
+								w.Call(idx, pcount, rets, method.CalcFloatByte());
+							}
+							else
+							{
+								idx = context.TransformSignature((MetadataMember)method);
+								Console.WriteLine($"Managed Call -> {method}");
+								w.CallManaged(idx, sig, sig.ReturnsValue, sig.HasThis);
+							}
+						}
 						else
 							w.SafeCall(idx);
 						break;

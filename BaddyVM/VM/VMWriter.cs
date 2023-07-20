@@ -1,5 +1,7 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
+using AsmResolver.DotNet.Memory;
+using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
 using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
@@ -191,6 +193,34 @@ internal ref struct VMWriter
 	{
 		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
 		Calli(argscount, ret, floatMask);
+	}
+
+	internal void CallManaged(ushort idx, MethodSignature sig, bool ret, bool thisCall)
+	{
+		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		byte flags = ret ? (byte)1 : (byte)0; // TODO: Add flags random pos
+		flags |= (byte)((thisCall ? 1 : 0) << 1);
+		if (sig.ReturnsValue && sig.ReturnType.IsValueType)
+		{
+			flags |= (byte)(1 << 2);
+			if (sig.ReturnType.GetImpliedMemoryLayout(false).Size is 1 or 2 or 4 or 8)
+				flags |= (byte)(1 << 3);
+		}
+		//Console.WriteLine(flags);
+		buffer.Code(ctx, VMCodes.CallManaged).Ushort((ushort)(sig.ParameterTypes.Count*8)).Byte(flags);
+		for(int i = sig.ParameterTypes.Count - 1; i >= 0; i--)
+		{
+			var arg = sig.ParameterTypes[i];
+			if (arg.IsStruct())
+			{
+				buffer.Byte(1);
+				var size = (ushort)(arg.GetImpliedMemoryLayout(false).Size);
+				//Console.WriteLine(size);
+				buffer.Ushort(size);
+			}
+			else
+				buffer.Byte(0);
+		}
 	}
 
 	internal void SafeCall(ushort idx)

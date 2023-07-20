@@ -48,6 +48,7 @@ internal enum VMCodes : byte
 
 	GetVirtFunc,
 
+	CallManaged,
 	CallAddress,
 	SafeCall, // just for structs, im stupid for naming
 	CallInterface,

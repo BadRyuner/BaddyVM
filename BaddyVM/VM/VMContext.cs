@@ -9,8 +9,6 @@ using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Handlers;
 using BaddyVM.VM.Protections;
 using BaddyVM.VM.Utils;
-using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Math = BaddyVM.VM.Handlers.Math;
 
@@ -21,7 +19,7 @@ internal class VMContext
 	internal VMLayout layout = new();
 
 	internal TypeDefinition VMType;
-	internal FieldDefinition VMTable; // TODO: Write init
+	internal FieldDefinition VMTable;
 	internal MethodDefinition Router;
 	//internal Dictionary<int, MethodDefinition> Invokers = new(4);
 	internal MethodDefinition Invoker;
@@ -58,6 +56,8 @@ internal class VMContext
 
 	internal void Init()
 	{
+		_isnet6 = core.module.CorLibTypeFactory.ExtractDotNetRuntimeInfo().Version.Major == 6;
+
 		//PTR = core.module.CorLibTypeFactory.Int32.MakePointerType();
 		PTR = core.module.CorLibTypeFactory.Void.MakePointerType();
 		VMSig = new MethodSignature(CallingConventionAttributes.Default, PTR, new TypeSignature[] { PTR, PTR });
@@ -154,6 +154,9 @@ internal class VMContext
 		var getslot = core.module.DefaultImporter.ImportMethod(rmh.GetMethod("GetSlot", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, new[] { irmi }));
 		var methodfromhandle = core.module.DefaultImporter.ImportMethod(typeof(System.Reflection.MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) }));
 
+		var rutnimemethodinfo = typeof(System.Reflection.MethodInfo).Assembly.GetType("System.Reflection.RuntimeMethodInfo");
+		var getSig = core.module.DefaultImporter.ImportMethod(rutnimemethodinfo.GetMethod("get_Signature", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic));
+
 		for (int x = 0; x < VMTableContent.Count; x++)
 		{
 			var target = VMTableContent[x];
@@ -212,6 +215,12 @@ internal class VMContext
 					i.Add(CilOpCodes.Call, methodfromhandle);
 					i.Add(CilOpCodes.Call, getslot);
 				}
+			}
+			else if (target is SignatureMember sm)
+			{
+				i.Add(CilOpCodes.Ldtoken, sm.inner);
+				i.Call(methodfromhandle);
+				i.Call(getSig);
 			}
 			else if (target is ITypeDefOrRef td)
 			{
@@ -272,6 +281,18 @@ internal class VMContext
 			VMTableContent.Add(member);
 		}
 		return (ushort)(result * 8); // idea: maybe add random +- 1 ? Hmm
+	}
+
+	internal ushort TransformSignature(MetadataMember member)
+	{
+		var sig = new SignatureMember(member);
+		var result = VMTableContent.FindIndex((m) => m is SignatureMember sm && sm.inner == member);
+		if (result == -1)
+		{
+			result = VMTableContent.Count;
+			VMTableContent.Add(sig);
+		}
+		return (ushort)(result * 8);
 	}
 
 	internal ushort TransformFieldOffset(IFieldDescriptor member)
@@ -338,6 +359,27 @@ internal class VMContext
 		res = (ushort)NewObjUnsafeData.Count;
 		NewObjUnsafeData.Add(method, res);
 		return res;
+	}
+
+	private bool _isnet6;
+	internal bool IsNet6() => _isnet6;
+
+	internal IMethodDescriptor ImportMethod(System.Reflection.MethodInfo method)
+	{
+		var ns = method.DeclaringType.Namespace;
+		var tn = method.DeclaringType.Name;
+		var type = core.module.CorLibTypeFactory.CorLibScope.CreateTypeReference(ns, tn);
+		TypeSignature returnType = core.module.DefaultImporter.ImportTypeSignature(method.ReturnType);
+		System.Reflection.ParameterInfo[] array = (((object)method.DeclaringType != null && method.DeclaringType.IsConstructedGenericType) ? method.Module.ResolveMethod(method.MetadataToken)!.GetParameters() : method.GetParameters());
+		TypeSignature[] array2 = new TypeSignature[array.Length];
+		for (int i = 0; i < array2.Length; i++)
+		{
+			array2[i] = core.module.DefaultImporter.ImportTypeSignature(array[i].ParameterType);
+		}
+
+		MethodSignature methodSignature = new MethodSignature((!method.IsStatic) ? CallingConventionAttributes.HasThis : CallingConventionAttributes.Default, returnType, array2);
+
+		return core.module.DefaultImporter.ImportMethod(type.CreateMemberReference(method.Name, methodSignature));
 	}
 
 	private ushort _DIA = ushort.MaxValue;

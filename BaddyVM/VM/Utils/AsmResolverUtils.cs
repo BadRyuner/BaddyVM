@@ -324,6 +324,8 @@ internal static class AsmResolverUtils
 			res |= p[2].ElementType.IsFloat() << 2;
 		if (p.Count > 3)
 			res |= p[3].ElementType.IsFloat() << 3;
+		if (md.Signature.ReturnsValue && md.Signature.ReturnType.ElementType is ElementType.R4 or ElementType.R8)
+			res |= 0b1_0000;
 
 		return (byte)res;
 	}

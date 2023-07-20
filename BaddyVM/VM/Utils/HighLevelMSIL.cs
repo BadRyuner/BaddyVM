@@ -194,6 +194,11 @@ internal static class HighLevelMSIL
 		return i.Load(l).LoadNumber(1).Sub().Save(l);
 	}
 
+	internal static CilInstructionCollection Dec(this CilInstructionCollection i, CilLocalVariable l, int num)
+	{
+		return i.Load(l).LoadNumber(num).Sub().Save(l);
+	}
+
 	internal static CilInstructionCollection InitBlk(this CilInstructionCollection i)
 	{
 		i.Add(CilOpCodes.Initblk);
@@ -759,6 +764,16 @@ internal static class HighLevelMSIL
 			// out: result
 	}
 
+	internal static CilInstructionCollection PopMemAsRef(this CilInstructionCollection i, VMContext ctx, CilLocalVariable buffer)
+	{
+		return i.LoadLocalStackHeap(ctx)
+			.Save(buffer) // mem = arg1->LocalStack
+			.Load(buffer) // result = ref mem;
+			.Load(buffer).DecreasePointer(8).Save(buffer)
+			.SaveLocalStackHeap(ctx, buffer); // arg1->LocalStack = (mem - 8)
+											  // out: result
+	}
+
 	internal static CilInstructionCollection PeekMem(this CilInstructionCollection i, VMContext ctx, CilLocalVariable to)
 	{
 		return i.LoadLocalStackHeap(ctx).Deref8().Save(to); // out = *(mem->LocalStack)
@@ -774,6 +789,12 @@ internal static class HighLevelMSIL
 	{
 		return i.LoadLocalStackHeap(ctx)
 			.Load(at).Sub().Load(it).Set8(); // *(mem->LocalStack - at) = it
+	}
+
+	internal static CilInstructionCollection OverrideMem(this CilInstructionCollection i, VMContext ctx, CilLocalVariable it)
+	{
+		return i.LoadLocalStackHeap(ctx)
+			.Load(it).Set8(); // *(mem->LocalStack - at) = it
 	}
 
 	internal static CilInstructionCollection DecreasePointer(this CilInstructionCollection i, int at)
@@ -892,6 +913,15 @@ internal static class HighLevelMSIL
 	}
 
 	internal static CilInstructionCollection IfTrue(this CilInstructionCollection i, Action action)
+	{
+		var nop = new CilInstruction(CilOpCodes.Nop);
+		i.Add(CilOpCodes.Brfalse, nop.CreateLabel());
+		action();
+		i.Add(nop);
+		return i;
+	}
+
+	internal static CilInstructionCollection IfFalse(this CilInstructionCollection i, Action action)
 	{
 		var nop = new CilInstruction(CilOpCodes.Nop);
 		i.Add(CilOpCodes.Brfalse, nop.CreateLabel());
