@@ -62,8 +62,6 @@ public unsafe class Program
 	{
 		public int a;
 	}
-
-	static double get() => 2.22d;
 	
 	private static void Main(string[] args)
 	{
@@ -72,7 +70,7 @@ public unsafe class Program
 		//Console.WriteLine(a);
 		//Console.WriteLine(Int64.Parse("52748"));
 		//Test();
-		Console.WriteLine(get());
+		Console.WriteLine("Test");
 		//Start();
 	}
 

@@ -150,7 +150,7 @@ internal class _Utils
 
 	private static void VMTableLoad(VMContext ctx) => ctx.AllocManagedMethod("VMTableLoad").CilMethodBody.Instructions
 		.NewLocal(ctx, out var buf).NewLocal(ctx, out var res)
-		.AccessToVMTable(ctx).DecodeCode(2).Sum().DerefI().Save(res).PushMem(ctx, res, buf) // push mem[vmtableOffset][code]
+		.AccessToVMTable(ctx).DecodeCode(4).Sum().DerefI().Save(res).PushMem(ctx, res, buf) // push mem[vmtableOffset][code]
 		.RegisterHandler(ctx, VMCodes.VMTableLoad);
 
 	private static void SwapStack(VMContext ctx) => ctx.AllocManagedMethod("SwapStack").CilMethodBody.Instructions

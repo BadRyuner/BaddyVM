@@ -32,6 +32,8 @@ internal ref struct HighLevelIced
 		asm.Label(ref l);
 	}
 
+	internal void MoveLongToResult(long l) => asm.mov(rax, l);
+
 	internal void MoveLongToResult(Label l) => asm.mov(rax, __qword_ptr[l]);
 
 	internal void MovePtrToResult(Label l) => asm.lea(rax, __qword_ptr[l]);

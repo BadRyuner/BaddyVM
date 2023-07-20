@@ -19,10 +19,10 @@ internal static class AntiDebug
 	internal static bool ForceDisable = false;
 
 	private static IMethodDescriptor Exit;
-	private static ushort ExitIdx;
+	private static int ExitIdx;
 
 	private static MethodDefinition PebCheck; // kills x64dbg without PEB_Hider
-	private static ushort PebCheckIdx;
+	private static int PebCheckIdx;
 
 	private static IMethodDescriptor IsAttached;
 	private static MethodDefinition AntiDebug_1;

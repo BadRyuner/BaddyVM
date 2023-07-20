@@ -46,7 +46,7 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
-	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, ushort reserved)
+	internal static CilInstructionCollection LdftnHideOutsideVM(this CilInstructionCollection i, VMContext ctx, int reserved)
 	{
 		i.Add(CilOpCodes.Ldsfld, ctx.VMTable);
 		i.Add(CilInstruction.CreateLdcI4(reserved));
@@ -157,7 +157,7 @@ internal static class HighLevelMSIL
 			.Calli(ctx, md.Signature.GetTotalParameterCount(), md.Signature.ReturnsValue);
 	}
 
-	internal static CilInstructionCollection CallHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor md, ushort reserved)
+	internal static CilInstructionCollection CallHideOutsideVM(this CilInstructionCollection i, VMContext ctx, IMethodDescriptor md, int reserved)
 	{
 		return i.AccessToVMTableOutsideVM(ctx)
 			.LoadNumber(reserved)

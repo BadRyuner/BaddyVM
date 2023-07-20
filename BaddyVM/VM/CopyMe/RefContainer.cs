@@ -10,6 +10,7 @@ internal static class RefContainer
 
 	static void Resolve(long l, object b, byte id)
 	{
+		return;
 		switch(id)
 		{
 			case 0:

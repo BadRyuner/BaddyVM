@@ -3,6 +3,7 @@ using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Memory;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
+using BaddyVM.VM.Protections;
 using BaddyVM.VM.Utils;
 using Reloaded.Assembler;
 using Reloaded.Assembler.Definitions;
@@ -136,9 +137,9 @@ internal ref struct VMWriter
 	#endregion
 
 	// TODO: add support for structs
-	internal void LoadStaticField(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.DerefI); 
-	internal void LoadStaticFieldRef(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx); 
-	internal void SetStaticField(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).SwapStack(ctx).Code(ctx, VMCodes.SetI); 
+	internal void LoadStaticField(int idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx).Code(ctx, VMCodes.DerefI); 
+	internal void LoadStaticFieldRef(int idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx); 
+	internal void SetStaticField(int idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx).SwapStack(ctx).Code(ctx, VMCodes.SetI); 
 
 	#region pointers
 	internal void DerefI() => buffer.Code(ctx, VMCodes.DerefI);
@@ -158,9 +159,9 @@ internal ref struct VMWriter
 	#endregion
 
 	#region arrays
-	internal void NewArr(ushort idx)
+	internal void NewArr(int idx)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.NewArr); 
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx).Code(ctx, VMCodes.NewArr); 
 		RegisterHandle();
 	}
 
@@ -189,15 +190,15 @@ internal ref struct VMWriter
 	internal void Ldlen() => buffer.Code(ctx, VMCodes.Push4).Int(8).Code(ctx, VMCodes.Add).Code(ctx, VMCodes.DerefI);
 	#endregion
 
-	internal void Call(ushort idx, byte argscount, bool ret, byte floatMask = 0)
+	internal void Call(int idx, byte argscount, bool ret, byte floatMask = 0)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 		Calli(argscount, ret, floatMask);
 	}
 
-	internal void CallManaged(ushort idx, MethodSignature sig, bool ret, bool thisCall)
+	internal void CallManaged(int idx, MethodSignature sig, bool ret, bool thisCall)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 		byte flags = ret ? (byte)1 : (byte)0; // TODO: Add flags random pos
 		flags |= (byte)((thisCall ? 1 : 0) << 1);
 		if (sig.ReturnsValue && sig.ReturnType.IsValueType)
@@ -223,9 +224,9 @@ internal ref struct VMWriter
 		}
 	}
 
-	internal void SafeCall(ushort idx)
+	internal void SafeCall(int idx)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx).Code(ctx, VMCodes.SafeCall).Byte(ctx.GetSafeCallId((ushort)(idx/8)));
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx).Code(ctx, VMCodes.SafeCall).Byte(ctx.GetSafeCallId((ushort)(idx/8)));
 		//ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount);
 	}
 
@@ -239,44 +240,37 @@ internal ref struct VMWriter
 		ctx.MaxArgs = Math.Max(ctx.MaxArgs, argscount & sbyte.MaxValue);
 	}
 
-	internal void CallVirt(ushort methodIdx, byte argscount, bool ret, byte floatByte = 0)
+	internal void CallVirt(int methodIdx, byte argscount, bool ret, byte floatByte = 0)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(methodIdx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(methodIdx);
 		buffer.Code(ctx, VMCodes.GetVirtFunc).Short((short)((argscount-1)*8));
 		Calli(argscount, ret, floatByte);
 	}
 
-	internal void CallInterface(ushort idx, bool isconstrained)
+	internal void CallInterface(int idx, bool isconstrained)
 	{ // TODO: adds arg for floats
-		buffer.Code(ctx, VMCodes.CallInterface).Ushort(idx).Byte(isconstrained ? (byte)1 : (byte)0);
+		buffer.Code(ctx, VMCodes.CallInterface).Ushort((ushort)idx).Byte(isconstrained ? (byte)1 : (byte)0);
 	}
 
-	internal void LoadVMTable(ushort idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+	internal void LoadVMTable(int idx) => buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 
 	internal void Ldstr(string str)
 	{
-		buffer.Code(ctx, VMCodes.Ldstr).Int(str.Length*2 + 2);
-		unsafe
-		{
-			fixed (char* c = str)
-				for (int i = 0; i < str.Length; i++)
-					buffer.Short((short)c[i]);
-		}
-		buffer.Short(0); // \0
-		//RegisterHandle();
+		var pushStr = ctx.Transform(NativeString.Make(ctx, str));
+		Call(pushStr, 0, true, 0);
 	}
 
-	internal void NewObj(ushort type, ushort constructor, byte args, bool isValueType, uint size, byte floatMask = 0)
+	internal void NewObj(int type, int constructor, byte args, bool isValueType, uint size, byte floatMask = 0)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(type);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject)); 
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(type);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(ctx.Transform(ctx.CreateObject)); 
 		Calli(1, true);
 		if (isValueType)
 		{
 			buffer.Code(ctx, VMCodes.Push4).Int(8).Code(ctx, VMCodes.Add);
 		}
 		buffer.Code(ctx, VMCodes.Eat);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(constructor); 
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(constructor); 
 		//buffer.Code(ctx, CallAdr).Byte((byte)(args ^ 0b1000_0000));
 		Calli((byte)(args ^ 0b1000_0000), false, floatMask);
 		buffer.Code(ctx, VMCodes.Poop);
@@ -295,14 +289,14 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.NewObjUnsafe).Ushort(idx);
 		RegisterHandle();
 		/*
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetObjStub(size));
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.CreateObject));
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(ctx.GetObjStub(size));
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(ctx.Transform(ctx.CreateObject));
 		buffer.Code(ctx, CallAdr).Byte(1);
 		buffer.Code(ctx, VMCodes.Eat);
 		buffer.Code(ctx, VMCodes.Poop);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(typeIdx);
 		buffer.Code(ctx, VMCodes.SetI);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(constructor);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(constructor);
 		buffer.Code(ctx, CallAdr).Byte((byte)(args ^ 0b1000_0000));
 		buffer.Code(ctx, VMCodes.Pop);
 		buffer.Code(ctx, VMCodes.Poop);
@@ -311,11 +305,11 @@ internal ref struct VMWriter
 	}
 
 	// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-	internal void CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(ushort typeIdx, bool isStatic)
+	internal void CreAAAAAAAAAAAAteDelegAAAAAAAAAAAAAte(int typeIdx, bool isStatic)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateInternalAlloc());
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.GetDelegateStaticCtor());
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(typeIdx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(ctx.GetDelegateInternalAlloc());
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(ctx.GetDelegateStaticCtor());
 		buffer.Code(ctx, VMCodes.CreateDelegate);
 		RegisterHandle();
 	}
@@ -324,7 +318,7 @@ internal ref struct VMWriter
 	{
 		buffer.Code(ctx, VMCodes.Eat);
 		buffer.Code(ctx, VMCodes.Poop);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 		buffer.Code(ctx, VMCodes.SetI);
 		buffer.Code(ctx, VMCodes.Poop);
 	}
@@ -384,10 +378,10 @@ internal ref struct VMWriter
 	}
 	internal void LoadLocalRef(ushort offset) => buffer.Code(ctx, VMCodes.LoadRef).Ushort(offset);
 
-	internal void SetField(ushort idx, uint size)
+	internal void SetField(int idx, uint size)
 	{
 		buffer.SwapStack(ctx);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 		Code(VMCodes.Add);
 		buffer.SwapStack(ctx);
 		switch (size)
@@ -400,15 +394,15 @@ internal ref struct VMWriter
 		}
 	}
 
-	internal void LoadFieldRef(ushort idx)
+	internal void LoadFieldRef(int idx)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 		buffer.Code(ctx, VMCodes.Add);
 	}
 
-	internal void LoadField(ushort idx, uint size)
+	internal void LoadField(int idx, uint size)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(idx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(idx);
 		Code(VMCodes.Add);
 		switch (size)
 		{
@@ -439,44 +433,44 @@ internal ref struct VMWriter
 
 	internal void Conv(VMTypes inType, CilCode code) => buffer.Code(ctx, VMCodes.Conv).Byte((byte)inType).Ushort((ushort)code);
 
-	internal void Box(ushort typeIdx, ushort size)
+	internal void Box(int typeIdx, ushort size)
 	{
 		if (size < 8) // allign
 			size = 8;
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(typeIdx);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(typeIdx);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.Code(ctx, VMCodes.Box).Ushort(size);
 	}
 
 	internal void Unbox(ushort size) => buffer.Code(ctx, VMCodes.Unbox).Ushort(size);
 
-	internal void Isinst(ushort to)
+	internal void Isinst(int to)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(to);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.SwapStack(ctx);
 		Call(ctx._IsInstanceOfAny(), 2, true);
 	}
 
-	internal void IsinstInterface(ushort to)
+	internal void IsinstInterface(int to)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(to);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.SwapStack(ctx);
 		Call(ctx._IsInstanceOfInterface(), 2, true);
 	}
 
-	internal void Castclass(ushort to)
+	internal void Castclass(int to)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(to);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.SwapStack(ctx);
 		Call(ctx._ChkCastClass(), 2, true);
 	}
 
-	internal void Castinterface(ushort to)
+	internal void Castinterface(int to)
 	{
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(to);
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(to);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.SwapStack(ctx);
 		Call(ctx._ChkCastInterface(), 2, true);
@@ -491,7 +485,7 @@ internal ref struct VMWriter
 		buffer.Code(ctx, VMCodes.PushInstanceID);
 		buffer.Code(ctx, VMCodes.SwapStack);
 		buffer.Code(ctx, VMCodes.Push4).Int(0);
-		buffer.Code(ctx, VMCodes.VMTableLoad).Ushort(ctx.Transform(ctx.RCResolver));
+		buffer.Code(ctx, VMCodes.VMTableLoad).Int(ctx.Transform(ctx.RCResolver));
 		//buffer.Code(ctx, CallAdr).Byte(3);
 		Calli(3, false);
 	}

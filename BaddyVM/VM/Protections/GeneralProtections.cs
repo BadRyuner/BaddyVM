@@ -9,6 +9,7 @@ internal class GeneralProtections
 
 	internal static void Protect(VMContext ctx, CilMethodBody body)
 	{
+		General.Recontrol.Apply(ctx, body);
 		General.ConstMelt.Apply(ctx, body);
 	}
 

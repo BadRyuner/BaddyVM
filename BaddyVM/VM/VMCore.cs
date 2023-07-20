@@ -660,6 +660,11 @@ internal class VMCore
 		if (ApplyProtections)
 		{
 			// TBD
+			var vmdata = new SegmentBuilder();
+
+			NativeString.MovStrings(vmdata);
+
+			file.Sections.Add(new AsmResolver.PE.File.PESection(".text", AsmResolver.PE.File.Headers.SectionFlags.MemoryRead | AsmResolver.PE.File.Headers.SectionFlags.MemoryWrite, vmdata));
 		}
 
 		//assembly.Write(path);

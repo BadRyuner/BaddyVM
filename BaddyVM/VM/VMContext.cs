@@ -252,6 +252,7 @@ internal class VMContext
 #if !DEBUG
 		VMType.Name = "a";
 #endif
+		NativeString.SetHandles(this);
 	}
 
 	internal byte EncryptVMCode(VMCodes code)
@@ -272,7 +273,7 @@ internal class VMContext
 		return encoded;
 	}
 
-	internal ushort Transform(MetadataMember member)
+	internal int Transform(MetadataMember member)
 	{
 		var result = VMTableContent.IndexOf(member);
 		if (result == -1)
@@ -283,7 +284,7 @@ internal class VMContext
 		return (ushort)(result * 8); // idea: maybe add random +- 1 ? Hmm
 	}
 
-	internal ushort TransformSignature(MetadataMember member)
+	internal int TransformSignature(MetadataMember member)
 	{
 		var sig = new SignatureMember(member);
 		var result = VMTableContent.FindIndex((m) => m is SignatureMember sm && sm.inner == member);
@@ -295,7 +296,7 @@ internal class VMContext
 		return (ushort)(result * 8);
 	}
 
-	internal ushort TransformFieldOffset(IFieldDescriptor member)
+	internal int TransformFieldOffset(IFieldDescriptor member)
 	{
 		var result = VMTableContent.IndexOf((MetadataMember)member);
 		if (result == -1)
@@ -306,7 +307,7 @@ internal class VMContext
 		return (ushort)(result * 8);
 	}
 
-	internal ushort TransformLdtoken(MetadataMember member)
+	internal int TransformLdtoken(MetadataMember member)
 	{
 		var ld = new LdTokenMember(member);
 		var result = VMTableContent.IndexOf(ld);
@@ -318,7 +319,7 @@ internal class VMContext
 		return (ushort)(result * 8);
 	}
 
-	internal ushort TransformCallInterface(IMethodDescriptor member)
+	internal int TransformCallInterface(IMethodDescriptor member)
 	{
 		var result = InterfaceCalls.IndexOf(member);
 		if (result == -1)
@@ -382,20 +383,20 @@ internal class VMContext
 		return core.module.DefaultImporter.ImportMethod(type.CreateMemberReference(method.Name, methodSignature));
 	}
 
-	private ushort _DIA = ushort.MaxValue;
-	internal ushort GetDelegateInternalAlloc()
+	private int _DIA = int.MaxValue;
+	internal int GetDelegateInternalAlloc()
 	{
-		if (_DIA != ushort.MaxValue)
+		if (_DIA != int.MaxValue)
 			return _DIA;
 		return _DIA = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(Delegate).GetMethod("InternalAlloc",
 				System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)));
 	}
 
-	private ushort _DFP = ushort.MaxValue;
-	internal ushort GetDelegateForPointer()
+	private int _DFP = int.MaxValue;
+	internal int GetDelegateForPointer()
 	{
-		if (_DFP != ushort.MaxValue)
+		if (_DFP != int.MaxValue)
 			return _DFP;
 		return _DFP = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(Marshal).GetMethod("GetDelegateForFunctionPointerInternal",
@@ -403,10 +404,10 @@ internal class VMContext
 				new[] { typeof(IntPtr), typeof(Type) })));
 	}
 
-	private ushort _DC = ushort.MaxValue;
-	internal ushort GetDelegateCtor()
+	private int _DC = int.MaxValue;
+	internal int GetDelegateCtor()
 	{
-		if (_DC != ushort.MaxValue)
+		if (_DC != int.MaxValue)
 			return _DC;
 		return _DC = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(MulticastDelegate).GetMethod("CtorClosed",
@@ -414,10 +415,10 @@ internal class VMContext
 				new[] { typeof(object), typeof(IntPtr) })));
 	}
 
-	private ushort _DSC = ushort.MaxValue;
-	internal ushort GetDelegateStaticCtor()
+	private int _DSC = int.MaxValue;
+	internal int GetDelegateStaticCtor()
 	{
-		if (_DSC != ushort.MaxValue)
+		if (_DSC != int.MaxValue)
 			return _DSC;
 		return _DSC = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(MulticastDelegate).GetMethod("CtorClosedStatic",
@@ -425,108 +426,108 @@ internal class VMContext
 				new[] { typeof(object), typeof(IntPtr) })));
 	}
 
-	private ushort _RTHV = ushort.MaxValue;
+	private int _RTHV = int.MaxValue;
 	/// <summary>
 	/// RuntimeTypeHandle.Value
 	/// </summary>
-	internal ushort _TypeHandleGetValue()
+	internal int _TypeHandleGetValue()
 	{
-		if (_RTHV != ushort.MaxValue)
+		if (_RTHV != int.MaxValue)
 			return _RTHV;
 		return _RTHV = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(RuntimeTypeHandle).GetMethod("get_Value")));
 	}
 
-	private ushort _TFH = ushort.MaxValue;
+	private int _TFH = int.MaxValue;
 	/// <summary>
 	/// RuntimeTypeHandle.Value
 	/// </summary>
-	internal ushort _TypeFromHandle()
+	internal int _TypeFromHandle()
 	{
-		if (_TFH != ushort.MaxValue)
+		if (_TFH != int.MaxValue)
 			return _TFH;
 		return _TFH = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle))));
 	}
 
-	private ushort _VFRT = ushort.MaxValue;
+	private int _VFRT = int.MaxValue;
 	/// <summary>
 	/// RuntimeType.m_handle
 	/// </summary>
-	internal ushort _ValueFieldRuntimeType()
+	internal int _ValueFieldRuntimeType()
 	{
-		if (_VFRT != ushort.MaxValue)
+		if (_VFRT != int.MaxValue)
 			return _VFRT;
 		return _VFRT = Transform((MetadataMember)core.module.DefaultImporter.ImportField(
 			typeof(RuntimeTypeHandle).Assembly.GetType("System.RuntimeType").GetField("m_handle",
 				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)));
 	}
 
-	private ushort _RTH = ushort.MaxValue;
+	private int _RTH = int.MaxValue;
 	/// <summary>
 	/// RuntimeType.GetUnderlyingNativeHandle()
 	/// </summary>
-	internal ushort _RuntimeTypeHandle()
+	internal int _RuntimeTypeHandle()
 	{
-		if (_RTH != ushort.MaxValue)
+		if (_RTH != int.MaxValue)
 			return _RTH;
 		return _RTH = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(RuntimeTypeHandle).Assembly.GetType("System.RuntimeType").GetMethod("GetUnderlyingNativeHandle",
 				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)));
 	}
 
-	private ushort _TGT = ushort.MaxValue;
+	private int _TGT = int.MaxValue;
 	/// <summary>
 	/// Type.GetType(string name)
 	/// </summary>
-	internal ushort _TypeGetType()
+	internal int _TypeGetType()
 	{
-		if (_TGT != ushort.MaxValue)
+		if (_TGT != int.MaxValue)
 			return _TGT;
 		return _TGT = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(
 			typeof(Type).GetMethod("GetType", new[] { typeof(string) })));
 	}
 
-	private ushort _IIOA = ushort.MaxValue;
-	internal ushort _IsInstanceOfAny()
+	private int _IIOA = int.MaxValue;
+	internal int _IsInstanceOfAny()
 	{
-		if (_IIOA != ushort.MaxValue)
+		if (_IIOA != int.MaxValue)
 			return _IIOA;
 		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
 		var method = type.GetMethod("IsInstanceOfAny", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 		return _IIOA = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
 	}
 
-	private ushort _IIOI = ushort.MaxValue;
-	internal ushort _IsInstanceOfInterface()
+	private int _IIOI = int.MaxValue;
+	internal int _IsInstanceOfInterface()
 	{
-		if (_IIOI != ushort.MaxValue)
+		if (_IIOI != int.MaxValue)
 			return _IIOI;
 		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
 		var method = type.GetMethod("IsInstanceOfInterface", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 		return _IIOI = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
 	}
 
-	private ushort __ChkCastClass = ushort.MaxValue;
-	internal ushort _ChkCastClass()
+	private int __ChkCastClass = int.MaxValue;
+	internal int _ChkCastClass()
 	{
-		if (__ChkCastClass != ushort.MaxValue)
+		if (__ChkCastClass != int.MaxValue)
 			return __ChkCastClass;
 		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
 		var method = type.GetMethod("ChkCastClass", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 		return __ChkCastClass = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
 	}
 
-	private ushort __ChkCastInterface = ushort.MaxValue;
-	internal ushort _ChkCastInterface()
+	private int __ChkCastInterface = int.MaxValue;
+	internal int _ChkCastInterface()
 	{
-		if (__ChkCastInterface != ushort.MaxValue)
+		if (__ChkCastInterface != int.MaxValue)
 			return __ChkCastInterface;
 		var type = typeof(Type).Assembly.GetType("System.Runtime.CompilerServices.CastHelpers");
 		var method = type.GetMethod("ChkCastInterface", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 		return __ChkCastInterface = Transform((MetadataMember)core.module.DefaultImporter.ImportMethod(method));
 	}
 
-	private ushort _HGAlloc = ushort.MaxValue;
-	internal ushort _Alloc()
+	private int _HGAlloc = int.MaxValue;
+	internal int _Alloc()
 	{
 		if (_HGAlloc != ushort.MaxValue)
 			return _HGAlloc;
