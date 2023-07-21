@@ -70,7 +70,7 @@ public unsafe class Program
 		//Console.WriteLine(a);
 		//Console.WriteLine(Int64.Parse("52748"));
 		//Test();
-		Console.WriteLine("Test");
+		Console.WriteLine(Console.ReadLine() == "MrJoposranchik");
 		//Start();
 	}
 

@@ -3,10 +3,10 @@ Another poorly implemented virtual machine for C#.
 Good for crackme obfuscation to show how good you are.
 
 # What opcodes are implemented?
-[Click me](https://github.com/BadRyuner/BaddyVM/blob/master/BaddyVM/VM/VMCore.cs#L115)
+[Click me](https://github.com/BadRyuner/BaddyVM/blob/master/BaddyVM/VM/VMCore.cs#L125)
 
 # How well does it work?
-Can add two times two and coolly call a virtual method that no one will know about it. (Using Washi theory) (It won't work with interfaces, coreclr will fall)
+Can add two times two and coolly call a virtual method that no one will know about it.
 
 Not all opcodes work correctly. 
 
@@ -17,6 +17,9 @@ Slower than the Yandere-dev code
 
 # How to use?
 Download latest sources, open Program.cs, change it for yourself and compile it in Release (because of the #!DEBUG directive, which turns off part of the protection in the debug release to make debugging easier for me) mode.
+
+IMPORTANT!!!
+Any Net7 files must be obfuscated by a compiled BaddyVM targetting Net7.0. Any Net6 files must be obfuscated by a compiled BaddyVM targetting Net6.0.
 
 # VM in action
 [Crackme #1 (Used old version)](https://crackmes.one/crackme/648c69d033c5d4393891394c)

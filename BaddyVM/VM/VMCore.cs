@@ -9,13 +9,12 @@ using AsmResolver.PE.DotNet.Builder;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using BaddyVM.VM.Protections;
+using BaddyVM.VM.Protections.Transformations;
 using BaddyVM.VM.Utils;
 using Echo.ControlFlow.Blocks;
 using Echo.ControlFlow.Construction.Symbolic;
 using Echo.ControlFlow.Serialization.Blocks;
 using Echo.Platforms.AsmResolver;
-using System;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -54,6 +53,7 @@ internal class VMCore
 		foreach(var method in methods) 
 		{
 			if (method.DeclaringType == context.RefContainer) continue;
+			ApplyIntrincisc(method);
 
 			var architecture = new CilArchitecture(method.CilMethodBody);
 			var resolver = new CilStateTransitioner(architecture);
@@ -627,6 +627,26 @@ internal class VMCore
 				default: throw new NotImplementedException(current.OpCode.ToString());
 			}
 		}
+	}
+
+	private void ApplyIntrincisc(MethodDefinition method)
+	{
+		var il = method.CilMethodBody.Instructions;
+		for(int i = 0; i < il.Count - 1; i++)
+		{
+			var first = il[i];
+			var second = il[i + 1];
+			if (first.OpCode.Code == CilCode.Ldstr && second.OpCode.Code == CilCode.Call &&
+				second.Operand is IMethodDescriptor imd && imd.Name == "op_Equality" && imd.DeclaringType.Name == "String")
+			{
+				// Only For someval == "somestring"
+				second.Operand = SlowStringCompare.GetMethod(context, (string)first.Operand);
+				first.ReplaceWithNop();
+			}
+
+			// TBD
+		}
+		il.CalculateOffsets();
 	}
 
 	internal void Save(string path)
