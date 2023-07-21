@@ -58,8 +58,14 @@ internal class VMContext
 	{
 		_isnet6 = core.module.CorLibTypeFactory.ExtractDotNetRuntimeInfo().Version.Major == 6;
 
-		//PTR = core.module.CorLibTypeFactory.Int32.MakePointerType();
+#if DEBUG
+		PTR = core.module.CorLibTypeFactory.Int32.MakePointerType();
+#else
 		PTR = core.module.CorLibTypeFactory.Void.MakePointerType();
+		for (var x = 0; x < 500; x++)
+			PTR = PTR.MakePointerType();
+#endif
+
 		VMSig = new MethodSignature(CallingConventionAttributes.Default, PTR, new TypeSignature[] { PTR, PTR });
 		VMType = new TypeDefinition(null, "VMRunner", TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, core.module.CorLibTypeFactory.Object.ToTypeDefOrRef());
 		Router = this.AllocManagedMethod("Router");
