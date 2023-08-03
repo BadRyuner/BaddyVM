@@ -186,8 +186,8 @@ internal static class AsmResolverUtils
 
 		i.Load(data).LoadNumber(ctx.layout.LocalStackHeap).Sum().Load(stack).Set8(); // data[stackoffset] = stack
 
-		i.Load(data).LoadNumber(ctx.layout.InstanceId).Sum().CallHideOutsideVM(ctx, ctx.RCNext).Set8();
-		i.Load(data).LoadNumber(ctx.layout.RCResolver).Sum().LdftnHideOutsideVM(ctx, ctx.RCResolver).Set8();
+		//i.Load(data).LoadNumber(ctx.layout.InstanceId).Sum().CallHideOutsideVM(ctx, ctx.RCNext).Set8();
+		//i.Load(data).LoadNumber(ctx.layout.RCResolver).Sum().LdftnHideOutsideVM(ctx, ctx.RCResolver).Set8();
 
 		int counter = ctx.layout.VMHeaderEnd;
 		if (!body.Owner.IsStatic)
@@ -293,6 +293,19 @@ internal static class AsmResolverUtils
 		name = "a";
 #endif
 		var method = new MethodDefinition(name, MethodAttributes.Static | MethodAttributes.Assembly, ctx.VMSig);
+		var body = new CilMethodBody(method);
+		method.CilMethodBody = body;
+		//method.CilMethodBody.InitializeLocals = false;
+		ctx.VMType.Methods.Add(method);
+		return method;
+	}
+
+	internal static MethodDefinition AllocManagedMethod(this VMContext ctx, string name, MethodSignature sig)
+	{
+#if !DEBUG
+		name = "a";
+#endif
+		var method = new MethodDefinition(name, MethodAttributes.Static | MethodAttributes.Assembly, sig);
 		var body = new CilMethodBody(method);
 		method.CilMethodBody = body;
 		//method.CilMethodBody.InitializeLocals = false;

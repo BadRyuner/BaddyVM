@@ -683,8 +683,9 @@ internal class VMCore
 			var vmdata = new SegmentBuilder();
 
 			NativeString.MovStrings(vmdata);
+			vmdata.Add(context.FunctionsPointers);
 
-			file.Sections.Add(new AsmResolver.PE.File.PESection(".text", AsmResolver.PE.File.Headers.SectionFlags.MemoryRead | AsmResolver.PE.File.Headers.SectionFlags.MemoryWrite, vmdata));
+			file.Sections.Add(new AsmResolver.PE.File.PESection(".aboba", AsmResolver.PE.File.Headers.SectionFlags.MemoryRead | AsmResolver.PE.File.Headers.SectionFlags.MemoryWrite, vmdata));
 		}
 
 		//assembly.Write(path);

@@ -61,7 +61,7 @@ internal static class NativeString
 		if (strings.Count == 0) return;
 
 		var asm = HighLevelIced.Get(ctx);
-		asm.KickDnspy();
+		//asm.KickDnspy();
 
 		var hint = 123123123123123;
 
@@ -72,7 +72,7 @@ internal static class NativeString
 			hint++;
 		}
 
-		var fn = ctx.AllocNativeMethod("a", MethodSignature.CreateStatic(ctx.core.module.CorLibTypeFactory.Void, ctx.PTR));
+		var fn = ctx.AllocNativeMethod("fixstrings", MethodSignature.CreateStatic(ctx.core.module.CorLibTypeFactory.Void, ctx.PTR));
 		fn.Code = asm.Compile();
 
 		hint = 123123123123123;

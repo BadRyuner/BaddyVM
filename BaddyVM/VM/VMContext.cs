@@ -20,7 +20,10 @@ internal class VMContext
 
 	internal TypeDefinition VMType;
 	internal FieldDefinition VMTable;
+
 	internal MethodDefinition Router;
+	internal DataSegment FunctionsPointers;
+
 	//internal Dictionary<int, MethodDefinition> Invokers = new(4);
 	internal MethodDefinition Invoker;
 	internal Dictionary<byte, MethodDefinition> Handlers = new(32);
@@ -58,17 +61,17 @@ internal class VMContext
 	{
 		_isnet6 = core.module.CorLibTypeFactory.ExtractDotNetRuntimeInfo().Version.Major == 6;
 
-#if DEBUG
+#if true
 		PTR = core.module.CorLibTypeFactory.Int32.MakePointerType();
 #else
 		PTR = core.module.CorLibTypeFactory.Void.MakePointerType();
-		for (var x = 0; x < 500; x++)
+		for (var x = 0; x < 100; x++)
 			PTR = PTR.MakePointerType();
 #endif
 
 		VMSig = new MethodSignature(CallingConventionAttributes.Default, PTR, new TypeSignature[] { PTR, PTR });
 		VMType = new TypeDefinition(null, "VMRunner", TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, core.module.CorLibTypeFactory.Object.ToTypeDefOrRef());
-		Router = this.AllocManagedMethod("Router");
+		Router = this.AllocNativeMethod("Router", VMSig).Owner;
 		VMTable = new FieldDefinition("VMTable", FieldAttributes.Static | FieldAttributes.Assembly, PTR);
 		VMType.Fields.Add(VMTable);
 		core.module.TopLevelTypes.Add(VMType);
@@ -76,6 +79,7 @@ internal class VMContext
 		//CreateObject = (MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(Activator).GetMethod("CreateInstance", new[] { typeof(Type) })); 
 		CreateObject = (MetadataMember)core.module.DefaultImporter.ImportMethod(typeof(System.Runtime.Serialization.FormatterServices).GetMethod("GetUninitializedObject", new[] { typeof(Type) }));
 		CreateAllocator();
+		/* // unused anymore
 		RefContainer = new MemberCloner(core.module).Include(core.ThisModule.TopLevelTypes.First(t => t.Name == "RefContainer")).Clone().ClonedTopLevelTypes.First();
 		core.module.TopLevelTypes.Add(RefContainer);
 		RefContainer.Name = "a";
@@ -84,6 +88,7 @@ internal class VMContext
 		foreach (var mm in RefContainer.Methods)
 			if (!mm.IsConstructor)
 				mm.Name = "a";
+		*/
 
 		if (core.ApplyProtections)
 			AntiDebug.Register(this);
@@ -118,6 +123,10 @@ internal class VMContext
 
 	internal void Inject()
 	{
+		var init = VMType.GetOrCreateStaticConstructor();
+		var i = init.CilMethodBody.Instructions;
+		i.Clear();
+
 		Constants.Handle(this);
 		LoadStore.Handle(this);
 		Objects.Handle(this);
@@ -129,7 +138,7 @@ internal class VMContext
 		_Utils.Handle(this);
 		Converters.Handle(this);
 
-		Main.Handle(this);
+		Main.Handle(this, i);
 
 		var attr = new MemberCloner(core.module)
 			.Include(ModuleDefinition.FromFile(typeof(VMCore).Assembly.Location).TopLevelTypes.First(t => t.Name == "IgnoresAccessChecksToAttribute"))
@@ -141,11 +150,9 @@ internal class VMContext
 
 		var oftype = core.module.DefaultImporter.ImportMethod(typeof(Type).GetMethod("GetTypeFromHandle"));
 
-		var init = VMType.GetOrCreateStaticConstructor();
-		var i = init.CilMethodBody.Instructions;
 		var NoNoNoCLR = new CilLocalVariable(core.module.DefaultImporter.ImportTypeSignature(typeof(RuntimeFieldHandle)));
 		init.CilMethodBody.LocalVariables.Add(NoNoNoCLR);
-		i.Clear();
+		
 		i.Add(CilInstruction.CreateLdcI4(VMTableContent.Count * 8));
 		i.Add(CilOpCodes.Call, core.module.DefaultImporter.ImportMethod(typeof(Marshal).GetMethod("AllocHGlobal", new[] { typeof(int) })));
 		i.Add(CilOpCodes.Stsfld, VMTable);

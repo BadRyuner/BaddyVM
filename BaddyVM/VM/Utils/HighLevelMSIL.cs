@@ -378,6 +378,7 @@ internal static class HighLevelMSIL
 		return i;
 	}
 
+	/*
 	internal static CilInstructionCollection GetInstanceID(this CilInstructionCollection i, VMContext ctx)
 	{
 		i.Add(CilOpCodes.Ldarg_1);
@@ -395,6 +396,7 @@ internal static class HighLevelMSIL
 		i.Add(CilOpCodes.Ldind_I); // out -> RCResolver fnptr
 		return i;
 	}
+	*/
 
 	internal static CilInstructionCollection While(this CilInstructionCollection i, Action action)
 	{

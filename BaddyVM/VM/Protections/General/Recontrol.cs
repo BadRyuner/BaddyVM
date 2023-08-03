@@ -10,10 +10,12 @@ namespace BaddyVM.VM.Protections.General;
 internal static class Recontrol
 {
 	static DataFlowGraph<CilInstruction> dfg;
+	internal static List<CilMethodBody> ignore = new(2);
 
 	internal static void Apply(VMContext ctx, CilMethodBody body)
 	{
 		if (body.Owner.IsConstructor) return;
+		if (ignore.Contains(body)) return;
 		if (body.Instructions.Any(i => i.OpCode.Code is CilCode.Jmp or CilCode.Throw)) 
 			return; // still hasn't been fixed in Echo
 		body.Instructions.CalculateOffsets();
