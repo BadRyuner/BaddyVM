@@ -446,18 +446,24 @@ internal ref struct VMWriter
 
 	internal void Isinst(int to)
 	{
+		//buffer.Code(ctx, VMCodes.IsInst).Ushort((ushort)to);
+		
 		buffer.Code(ctx, VMCodes.VMTableLoad).Int(to);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.SwapStack(ctx);
 		Call(ctx._IsInstanceOfAny(), 2, true);
+		
 	}
 
 	internal void IsinstInterface(int to)
 	{
+		//buffer.Code(ctx, VMCodes.IsInst).Ushort((ushort)to);
+		
 		buffer.Code(ctx, VMCodes.VMTableLoad).Int(to);
 		LoadField(ctx._ValueFieldRuntimeType(), 8);
 		buffer.SwapStack(ctx);
 		Call(ctx._IsInstanceOfInterface(), 2, true);
+		
 	}
 
 	internal void Castclass(int to)

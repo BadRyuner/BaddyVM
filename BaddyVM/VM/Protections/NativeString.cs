@@ -61,7 +61,7 @@ internal static class NativeString
 		if (strings.Count == 0) return;
 
 		var asm = HighLevelIced.Get(ctx);
-		//asm.KickDnspy();
+		asm.KickDnspy();
 
 		var hint = 123123123123123;
 
@@ -98,10 +98,18 @@ internal static class NativeString
 			hint++;
 		}
 
-		var ctor = ctx.core.module.GetOrCreateModuleConstructor();
-		var instr = ctor.CilMethodBody.Instructions;
+		if (Program.SKIP_STRINGS_INIT_VTABLE)
+			return;
+
+		MethodDefinition target = null;
+		if (ctx.core.module.ManagedEntryPointMethod != null)
+			target = ctx.core.module.ManagedEntryPointMethod;
+		else
+			target = ctx.core.module.GetOrCreateModuleConstructor();
+
+		var instr = target.CilMethodBody.Instructions;
 		var loc = new CilLocalVariable(ctx.core.module.DefaultImporter.ImportType(typeof(RuntimeTypeHandle)).ToTypeSignature());
-		ctor.CilMethodBody.LocalVariables.Add(loc);
+		target.CilMethodBody.LocalVariables.Add(loc);
 		instr.Insert(0, new CilInstruction(CilOpCodes.Ldtoken, ctx.core.module.CorLibTypeFactory.String.ToTypeDefOrRef()));
 		instr.Insert(1, new CilInstruction(CilOpCodes.Stloc, loc));
 		instr.Insert(2, new CilInstruction(CilOpCodes.Ldloca, loc));
@@ -115,7 +123,7 @@ internal static class NativeString
 
 		foreach (var i in strings)
 		{
-			builder.Add(i);
+			builder.Add(i, 8);
 		}
 		strings.Clear();
 	}

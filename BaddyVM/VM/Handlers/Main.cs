@@ -22,6 +22,8 @@ internal static class Main
 
 		/* 🚀 BLAZING 🚀 FAST 🚀 */
 
+		builder.KickDnspy();
+
 		asm.mov(instructions, 123123123123); // get 
 		asm.xor(rax,rax); // clear rax
 		asm.mov(al, __byte_ptr[code]); // get opcode
@@ -61,6 +63,7 @@ internal static class Main
 		body = ctx.AllocNativeMethod("GetFunPtrs", MethodSignature.CreateStatic(ctx.PTR));
 		builder = HighLevelIced.Get(ctx);
 		asm = builder.asm;
+		builder.KickDnspy();
 		asm.mov(rax, 123123123123);
 		asm.ret();
 		compiled = builder.Compile();

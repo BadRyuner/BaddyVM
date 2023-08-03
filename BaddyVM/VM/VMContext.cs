@@ -31,6 +31,7 @@ internal class VMContext
 	internal List<IMethodDefOrRef> SafeCallTargets = new(16);
 	internal List<IMethodDescriptor> InterfaceCalls = new(16);
 	internal List<ITypeDefOrRef> TryCathTypes = new(8);
+	internal List<ITypeDefOrRef> IsInstTypes = new(8);
 	internal Dictionary<MethodDefinition, MethodDefinition> ProxyToCode;
 	internal MethodSignature VMSig;
 
@@ -294,7 +295,7 @@ internal class VMContext
 			result = VMTableContent.Count;
 			VMTableContent.Add(member);
 		}
-		return (ushort)(result * 8); // idea: maybe add random +- 1 ? Hmm
+		return (result * 8); // idea: maybe add random +- 1 ? Hmm
 	}
 
 	internal int TransformSignature(MetadataMember member)
@@ -306,7 +307,7 @@ internal class VMContext
 			result = VMTableContent.Count;
 			VMTableContent.Add(sig);
 		}
-		return (ushort)(result * 8);
+		return (result * 8);
 	}
 
 	internal int TransformFieldOffset(IFieldDescriptor member)
@@ -317,7 +318,7 @@ internal class VMContext
 			result = VMTableContent.Count;
 			VMTableContent.Add((MetadataMember)member);
 		}
-		return (ushort)(result * 8);
+		return (result * 8);
 	}
 
 	internal int TransformLdtoken(MetadataMember member)
@@ -329,7 +330,7 @@ internal class VMContext
 			result = VMTableContent.Count;
 			VMTableContent.Add(ld);
 		}
-		return (ushort)(result * 8);
+		return (result * 8);
 	}
 
 	internal int TransformCallInterface(IMethodDescriptor member)
@@ -339,6 +340,17 @@ internal class VMContext
 		{
 			result = InterfaceCalls.Count;
 			InterfaceCalls.Add(member);
+		}
+		return (ushort)(result);
+	}
+
+	internal ushort TransformIsInst(ITypeDefOrRef member)
+	{
+		var result = IsInstTypes.IndexOf(member);
+		if (result == -1)
+		{
+			result = IsInstTypes.Count;
+			IsInstTypes.Add(member);
 		}
 		return (ushort)(result);
 	}

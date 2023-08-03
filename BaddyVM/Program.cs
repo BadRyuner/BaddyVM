@@ -1,14 +1,17 @@
-﻿using BaddyVM.VM;
+﻿using AsmResolver.DotNet;
+using BaddyVM.VM;
 
 namespace BaddyVM;
 
 internal class Program
 {
+	internal static bool SKIP_STRINGS_INIT_VTABLE = false;
+
 	static void Main(string[] args) // rewrite it for own purposes, atm it in development mode
 	{
 		string save = null;
 		string target = null;
-		var what = 0;
+		var what = 2;
 		string net = default;
 #if NET7_0
 		net = "7.0";
@@ -29,13 +32,16 @@ internal class Program
 		}
 		else
 		{
-			target = $"D:\\Work\\BaddyVM\\WpfApp1\\bin\\Debug\\net{net}-windows\\WpfApp1.dll";
+			SKIP_STRINGS_INIT_VTABLE = true; // idk why
+			target = $"D:\\Work\\BaddyVM\\WpfApp1\\bin\\Release\\net{net}-windows\\WpfApp1.dll";
 			save = "D:\\Test\\WpfApp1.dll";
 		}
 		var vm = new VMCore(target, applyProtections: true);
 		var methods = vm.module.GetAllTypes().SelectMany(t => t.Methods).Where(m => /*and this*/ 
 			//m.IsPublic &&
-			!m.IsConstructor &&
+			!m.IsConstructor 
+			&& !m.CustomAttributes.Any(a => a.Constructor.DeclaringType.Name == "GeneratedCodeAttribute")
+			&&
 			m.CilMethodBody != null);
 #if DEBUG
 		BaddyVM.VM.Protections.AntiDebug.ForceDisable = true;

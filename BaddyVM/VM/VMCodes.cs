@@ -31,6 +31,7 @@ internal enum VMCodes : byte
 	SetI, SetI4, SetI2, SetI1, SetSized,
 
 	Conv,
+	IsInst,
 
 	Box, Unbox, Throw,
 

@@ -658,6 +658,9 @@ internal class VMCore
 		module.IsBit32Preferred = false;
 		module.IsBit32Required = false;
 
+		foreach(var f in module.GetAllTypes().SelectMany(t => t.Methods))
+			f.CilMethodBody?.Instructions.ExpandMacros();
+
 		if (ApplyProtections)
 		{
 			foreach (var type in module.GetAllTypes().Where(t => !t.IsModuleType))

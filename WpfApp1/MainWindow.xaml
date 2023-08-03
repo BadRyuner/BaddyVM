@@ -5,10 +5,33 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp1"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="300" Width="400">
     <Grid>
-        <Button Content="Button" HorizontalAlignment="Center" Height="65" Margin="0,305,0,0" VerticalAlignment="Top" Width="160" Click="Button_Click"/>
-        <Label Name="Lbl" Content="Label" HorizontalAlignment="Left" Margin="302,180,0,0" VerticalAlignment="Top" Width="207"/>
-
+        <Grid.RowDefinitions>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Label Grid.Row="0" Grid.Column="0" Content="Pin:" VerticalAlignment="Center" HorizontalAlignment="Right" />
+        <Label Grid.Row="0" Grid.Column="1" Name="Pin" Content="" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.ColumnSpan="2" />
+        <Button Grid.Row="1" Grid.Column="0" Content="1" Click="Button_Click" />
+        <Button Grid.Row="1" Grid.Column="1" Content="2" Click="Button_Click" />
+        <Button Grid.Row="1" Grid.Column="2" Content="3" Click="Button_Click" />
+        <Button Grid.Row="2" Grid.Column="0" Content="4" Click="Button_Click" />
+        <Button Grid.Row="2" Grid.Column="1" Content="5" Click="Button_Click" />
+        <Button Grid.Row="2" Grid.Column="2" Content="6" Click="Button_Click" />
+        <Button Grid.Row="3" Grid.Column="0" Content="7" Click="Button_Click"/>
+        <Button Grid.Row="3" Grid.Column="1" Content="8" Click="Button_Click"/>
+        <Button Grid.Row="3" Grid.Column="2" Content="9" Click="Button_Click"/>
+        <Button Grid.Row="4" Grid.Column="1" Content="0" Click="Button_Click"/>
+        <Button Grid.Row="4" Grid.Column="2" Content="Check" Click="Button_Click_Check" />
+        <Button Grid.Row="4" Grid.Column="0" Content="Clear" Click="Button_Click_Clear" />
     </Grid>
 </Window>

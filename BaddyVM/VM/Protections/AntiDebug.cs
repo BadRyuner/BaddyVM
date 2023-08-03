@@ -16,7 +16,7 @@ using static Iced.Intel.AssemblerRegisters;
 namespace BaddyVM.VM.Protections;
 internal static class AntiDebug
 {
-	internal static bool ForceDisable = false;
+	internal static bool ForceDisable = true;
 
 	private static IMethodDescriptor Exit;
 	private static int ExitIdx;
